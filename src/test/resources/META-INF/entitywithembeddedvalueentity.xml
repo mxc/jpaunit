@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <EntityWithEmbeddedValue id="1" stringValue1="String Value 1-1" booleanValue="1"     stringValue="string Value 2-1" intValue="110" localDateValue="2015-08-06" />
+    <EntityWithEmbeddedValue id="2" stringValue1="String Value 1-2" booleanValue="true"  stringValue="string Value 2-2" intValue="120" localDateValue="2015-09-06" />
+    <EntityWithEmbeddedValue id="3" stringValue1="String Value 1-3" booleanValue="false" stringValue="string Value 2-3" intValue="130" localDateValue="2015-10-06" />
+    <EntityWithEmbeddedValue id="4" stringValue1="String Value 1-4" booleanValue="0"     stringValue="string Value 2-4" intValue="140" localDateValue="2015-11-06" />
+</dataset>

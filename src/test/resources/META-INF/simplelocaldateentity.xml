@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleLocalDateEntity id="1" localDate="2015-07-06" />
+    <SimpleLocalDateEntity id="2" localDate="2014-07-06" />
+    <SimpleLocalDateEntity id="3" localDate="2018-07-06" />
+</dataset>

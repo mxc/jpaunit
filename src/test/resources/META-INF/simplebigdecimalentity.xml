@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleBigDecimalEntity id="1" bigDecimalValue="1000.24" />
+    <SimpleBigDecimalEntity id="2" bigDecimalValue="999999999999.9999" />
+    <SimpleBigDecimalEntity id="3" bigDecimalValue="1024" />
+    <SimpleBigDecimalEntity id="4" bigDecimalValue="999.99999" />
+</dataset>

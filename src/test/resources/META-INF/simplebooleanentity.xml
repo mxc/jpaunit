@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleBooleanEntity id="1" booleanValue="0" />
+    <SimpleBooleanEntity id="2" booleanValue="false" />
+    <SimpleBooleanEntity id="3" booleanValue="1" />
+    <SimpleBooleanEntity id="4" booleanValue="true" />
+</dataset>
