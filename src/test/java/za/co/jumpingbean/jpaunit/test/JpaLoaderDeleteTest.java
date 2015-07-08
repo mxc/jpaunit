@@ -59,7 +59,9 @@ public class JpaLoaderDeleteTest {
             em.getTransaction().commit();
         }
         loader.delete();
+        em.getTransaction().begin();
         ForeignEntity ent = em.find(ForeignEntity.class, 1);
         Assert.assertNull(ent);
+        em.getTransaction().commit();
     }
 }
