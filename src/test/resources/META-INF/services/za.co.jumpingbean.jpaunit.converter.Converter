@@ -1,0 +1,6 @@
+za.co.jumpingbean.jpaunit.converter.BigDecimalConverter
+za.co.jumpingbean.jpaunit.converter.BooleanConverter
+za.co.jumpingbean.jpaunit.converter.DateConverter
+za.co.jumpingbean.jpaunit.converter.IntegerConverter
+za.co.jumpingbean.jpaunit.converter.StringConverter
+za.co.jumpingbean.jpaunit.converter.LocalDateConverter

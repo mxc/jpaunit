@@ -18,12 +18,12 @@
 package za.co.jumpingbean.jpaunit;
 
 import za.co.jumpingbean.jpaunit.converter.Converter;
-import za.co.jumpingbean.jpaunit.loader.SaxHandler;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,17 +33,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.persistence.Embeddable;
 import javax.persistence.EntityManager;
-import org.reflections.Reflections;
-import org.reflections.scanners.ResourcesScanner;
-import org.reflections.scanners.SubTypesScanner;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
+import javax.persistence.OptimisticLockException;
+import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 import za.co.jumpingbean.jpaunit.exception.ConverterStreamException;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.JPAParser;
@@ -52,12 +50,12 @@ import za.co.jumpingbean.jpaunit.loader.JPAParser;
  *
  * @author mark
  */
-public class JPALoader {
+public class JpaLoader {
 
     String modelPackageName;
     String dataSetFileName;
     //Our list of converters found on the classpath
-    final Converters converters = new Converters();
+    static final Converters converters = new Converters();
     //The data to be provided by a JPAParser
     List<DataSetEntry> dataset = new ArrayList<>();
     //Keep list of classes added during load for foreign key lookup
@@ -67,47 +65,49 @@ public class JPALoader {
     EntityManager em;
     JPAParser parser;
 
-    public void init(String dataSetFileName, String modelPackageName, JPAParser parser, EntityManager em) {
-        this.modelPackageName = modelPackageName;
-        this.dataSetFileName = dataSetFileName;
-        this.em = em;
-        this.parser = parser;
-        this.loadConverters();
-    }
-
     /**
      * Load converter functions supplied by library and custom converter types
      * defined by client. All converters need to implement the @link{Converter}
      * interface
      */
-    private void loadConverters() {
-        List<ClassLoader> classLoadersList = new LinkedList<>();
-        classLoadersList.add(ClasspathHelper.contextClassLoader());
-        classLoadersList.add(ClasspathHelper.staticClassLoader());
-        Set<URL> urls = ClasspathHelper.forClassLoader(classLoadersList.toArray(new ClassLoader[0]));
-        urls.addAll(ClasspathHelper.forManifest());
+    static {
+        ServiceLoader<Converter> foundConverters
+                = ServiceLoader.load(Converter.class);
 
-        Reflections reflections = new Reflections(new ConfigurationBuilder()
-                .setScanners(new SubTypesScanner(false), new ResourcesScanner())
-                .setUrls(urls));
+        foundConverters.forEach(c
+                -> {
+                    try {
+                        Method m = c.getClass().getMethod("convert", String.class);
+                        converters.addConverter(m.getReturnType(), c);
+                        Logger.getLogger((JpaLoader.class.getName())).log(Level.INFO, MessageFormat.format("Method convert found in class {0} ", c));
+                    } catch (NoSuchMethodException | SecurityException ex) {
+                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Method convert not found in class {0} ", c), ex);
+                    }
+                }
+        );
+    }
 
-        Set<Class<? extends Converter>> converterImpls = reflections.getSubTypesOf(Converter.class);
-        converterImpls.forEach(c -> {
-            try {
-                Method m = c.getMethod("convert", String.class);
-                converters.addConverter(m.getReturnType(), c.newInstance());
-            } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException ex) {
-                Logger.getLogger(JPALoader.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        });
-
+    public void init(String dataSetFileName, String modelPackageName, JPAParser parser, EntityManager em) {
+        this.modelPackageName = modelPackageName;
+        this.dataSetFileName = dataSetFileName;
+        this.em = em;
+        this.parser = parser;
+        //this.loadConverters();
     }
 
     public void load() throws ParserException {
         this.importDataSet();
-        em.getTransaction().begin();
-        this.process();
-        em.getTransaction().commit();
+        boolean active = em.getTransaction().isActive();
+        try {
+            if (!active) {
+                em.getTransaction().begin();
+            }
+        } finally {
+            this.process();
+            if (!active) {
+                em.getTransaction().commit();
+            }
+        }
     }
 
     /**
@@ -135,24 +135,50 @@ public class JPALoader {
                     dataSetClasses.put(clazz, new LinkedList());
                 }
                 dataSetClasses.get(clazz).add(obj);
-                this.em.merge(obj);
+                try {
+                    this.em.merge(obj);
+                    em.flush();
+                    Logger
+                            .getLogger(JpaLoader.class
+                                    .getName()).log(Level.INFO,
+                                    MessageFormat.format("Loaded {0} entity ", clazz));
+                } catch (OptimisticLockException ex) {
+                    Logger.getLogger(JpaLoader.class
+                            .getName()).log(Level.SEVERE,
+                                    MessageFormat.format("Optimisited lock exception. Make sure you "
+                                            + "database is emtpy before test run.", clazz), ex);
+                } catch (Exception ex) {
+                    Logger.getLogger(JpaLoader.class
+                            .getName()).log(Level.SEVERE,
+                                    MessageFormat.format("Error in code", clazz), ex);
+                }
+
             } catch (InstantiationException | IllegalAccessException ex) {
-                Logger.getLogger(JPALoader.class.getName()).log(Level.SEVERE,
-                        MessageFormat.format("No class found for {0}. Do you have a spelling "
-                                + "mistake in your dataset file?", clazz), ex);
+                Logger.getLogger(JpaLoader.class
+                        .getName()).log(Level.SEVERE,
+                                MessageFormat.format("No class found for {0}. Do you have a spelling "
+                                        + "mistake in your dataset file?", clazz), ex);
             }
 
             //Print out attributes not loaded into object. These will be unmatched
             //properties due to spelling errors or name mismatch between
             //method name and property name
-            Logger.getLogger(JPALoader.class.getName()).log(Level.INFO, "Loaded {0} "
-                    + "proeprties for {1}", new Object[]{count.get(), clazz});
-            Logger.getLogger(JPALoader.class.getName()).log(Level.INFO, "{0} has "
-                    + "the following unmatched attributes", clazz);
-            entry.getProperties().stream().forEach(c -> {
-                Logger.getLogger(JPALoader.class.getName()).log(Level.INFO, "{0} = {1}",
-                        new Object[]{c, entry.getValue(c)});
-            });
+            Logger
+                    .getLogger(JpaLoader.class
+                            .getName()).log(Level.INFO, "Loaded {0} "
+                            + "properties for {1}", new Object[]{count.get(), clazz});
+
+            if (!entry.getProperties().isEmpty()) {
+                Logger.getLogger(JpaLoader.class
+                        .getName()).log(Level.INFO, "{0} has "
+                                + "the following unmatched attributes", clazz);
+                entry.getProperties()
+                        .stream().forEach(c -> {
+                            Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO, "{0} = {1}",
+                                    new Object[]{c, entry.getValue(c)});
+                        }
+                        );
+            }
         });
     }
 
@@ -185,22 +211,27 @@ public class JPALoader {
                                         //set foreign object
                                         m.invoke(obj, dataSetObject);
                                         count.incrementAndGet();
+
                                     }
                                 } catch (NoSuchMethodException | SecurityException |
                                 IllegalAccessException | IllegalArgumentException |
                                 InvocationTargetException ex) {
-                                    Logger.getLogger(JPALoader.class.getName()).log(Level.SEVERE,
+                                    Logger.getLogger(JpaLoader.class
+                                            .getName()).log(Level.SEVERE,
                                             "Error executing 'getId' method on class"
                                             + dataSetObject.getClass(), ex);
                                 }
                             });
+
                         }
                     } else {
                         //Determine if this is a complex data type. i.e and
                         //@embeddable data type that has its own properties
                         //and values
-                        Annotation annotation = parameterClass.getDeclaredAnnotation(Embeddable.class);
-                        if (annotation != null) {
+                        Annotation annotation = parameterClass.getDeclaredAnnotation(Embeddable.class
+                        );
+                        if (annotation
+                        != null) {
                             Object embeddedObj;
                             try {
                                 embeddedObj = parameterClass.newInstance();
@@ -208,7 +239,7 @@ public class JPALoader {
                                 m.invoke(obj, embeddedObj);
                             } catch (InstantiationException | IllegalAccessException |
                             IllegalArgumentException | InvocationTargetException ex) {
-                                Logger.getLogger(JPALoader.class.getName()).log(Level.SEVERE,
+                                Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
                                         "Reflection error while processing xml data file", ex);
                                 throw new ConverterStreamException(ex, "Reflection error while "
                                         + "processing xml data file");
@@ -243,23 +274,29 @@ public class JPALoader {
                             String property = m.getName().substring(3);
                             //int index = entry.getIndexOfPropert(property);
                             if (!property.isEmpty()) {
-                                if (converters.contains(parameterClass)) {
-                                    Object result = converters.get(parameterClass)
-                                    .convert(entry.getValue(property));
+                                if (converters.contains(parameterClass) && entry.getProperties().contains(property)) {
                                     try {
-                                        m.invoke(obj, result);
-                                        count.incrementAndGet();
-                                    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                                        Logger.getLogger(JPALoader.class.getName()).log(Level.SEVERE, "Reflection error while processing xml data file", ex);
-                                        throw new ConverterStreamException(ex, "Reflection error while processing xml data file");
-                                    }
+                                        Object result = converters.get(parameterClass)
+                                        .convert(entry.getValue(property));
+                                        try {
+                                            m.invoke(obj, result);
+                                            count.incrementAndGet();
+                                        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                                            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, "Reflection error while processing xml data file", ex);
+                                            throw new ConverterStreamException(ex, "Reflection error while processing xml data file");
+                                        }
+                                    } catch (CannotConvertException ex) {
+                                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
+                                                MessageFormat.format("Error converting {0} with value {1}", property, entry.getValue(property)), ex);
+                                    };
+                                    //Removed used properties from list.
+                                    //Any remaining properties after load will
+                                    //be properties that were not matched.
+                                    entry.removeProperty(property);
                                 }
-                                //Removed used properties from list.
-                                //Any remaining properties after load will
-                                //be properties that were not matched.
-                                entry.removeProperty(property);
+
                             } else {
-                                Logger.getLogger(JPALoader.class.getName()).log(Level.WARNING, "No converter found for {0}", parameterClass);
+                                Logger.getLogger(JpaLoader.class.getName()).log(Level.WARNING, "No converter found for {0}", parameterClass);
                             }
                         }
                     }
@@ -268,11 +305,23 @@ public class JPALoader {
     }
 
     public void delete() {
-        em.getTransaction().begin();
-        Set<Class> set = dataSetClasses.keySet();
-        Iterator<Class> itr = set.iterator();
-        delete(itr.next(), itr);
-        em.getTransaction().commit();
+        boolean active = true;
+        if (!em.getTransaction().isActive()) {
+            active = false;
+        }
+        try {
+            if (!active) {
+                em.getTransaction().begin();
+            }
+            Set<Class> set = dataSetClasses.keySet();
+            Iterator<Class> itr = set.iterator();
+            itr.next();
+            delete(itr.next(), itr);
+        } finally {
+            if (!active) {
+                em.getTransaction().commit();
+            }
+        }
     }
 
     private void delete(Class clazz, Iterator<Class> itr) {
@@ -286,4 +335,3 @@ public class JPALoader {
         });
     }
 }
-

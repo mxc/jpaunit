@@ -91,12 +91,12 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
     @Override
 
     public void endDocument() throws SAXException {
-        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "starting dataset {0} processing.", fileName);
+        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "finished dataset {0} processing.", fileName);
     }
 
     @Override
     public void startDocument() throws SAXException {
-        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "finished dataset {0} processing.", fileName);
+        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "started dataset {0} processing.", fileName);
     }
 
     @Override

@@ -24,7 +24,7 @@ import javax.persistence.Persistence;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import za.co.jumpingbean.jpaunit.JPALoader;
+import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
 import za.co.jumpingbean.jpaunit.test.model.ForeignEntity;
@@ -33,7 +33,7 @@ import za.co.jumpingbean.jpaunit.test.model.ForeignEntity;
  *
  * @author mark
  */
-public class JPALoaderForeignEntityTest {
+public class JpaLoaderForeignEntityTest {
 
     private static EntityManager em;
     private final String modelPackageName = "za.co.jumpingbean.jpaunit.test.model";
@@ -45,7 +45,7 @@ public class JPALoaderForeignEntityTest {
 
     @Test
     public void ForeginTest() throws ParserException {
-        JPALoader loader = new JPALoader();
+        JpaLoader loader = new JpaLoader();
         loader.init("META-INF/foreignentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         em.clear();

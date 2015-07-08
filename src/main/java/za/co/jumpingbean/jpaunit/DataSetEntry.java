@@ -17,6 +17,7 @@
  */
 package za.co.jumpingbean.jpaunit;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -55,8 +56,8 @@ public class DataSetEntry {
     public String getValue(String column){
         int index = columns.indexOf(column);
         if (index==-1) {
-            Logger.getLogger(DataSetEntry.class.getName()).log(Level.WARNING,"{0} not found in columns list");
-            return "";
+            Logger.getLogger(DataSetEntry.class.getName()).log(Level.WARNING,"{0} not found in columns list",column);
+            return null;
         }
         return values.get(index);
     }
@@ -109,9 +110,14 @@ public class DataSetEntry {
     }
 
     public void removeProperty(String property) {
+        try{
         int indexOf = columns.indexOf(property);
         columns.remove(indexOf);
         values.remove(indexOf);
+        }catch(IndexOutOfBoundsException ex){
+            Logger.getLogger(DataSetEntry.class.getName()).log(Level.SEVERE,
+                    MessageFormat.format("Error removing property {0}",property),ex);
+        }
     }
 
 }

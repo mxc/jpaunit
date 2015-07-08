@@ -22,7 +22,7 @@ import javax.persistence.Persistence;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import za.co.jumpingbean.jpaunit.JPALoader;
+import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
 import za.co.jumpingbean.jpaunit.test.model.EntityWithEmbeddedValue;
@@ -43,7 +43,7 @@ public class JpaLoaderEmbeddedEntityTest {
 
     @Test
     public void embeddedTest() throws ParserException {
-        JPALoader loader = new JPALoader();
+        JpaLoader loader = new JpaLoader();
         loader.init("META-INF/entitywithembeddedvalueentity.xml", modelPackageName,
                 new SaxHandler(), em);
         loader.load();
