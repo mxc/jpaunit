@@ -40,7 +40,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.persistence.Embeddable;
 import javax.persistence.EntityManager;
-import javax.persistence.OptimisticLockException;
+import javax.persistence.RollbackException;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 import za.co.jumpingbean.jpaunit.exception.ConverterStreamException;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
@@ -105,7 +105,11 @@ public class JpaLoader {
         } finally {
             this.process();
             if (!active) {
-                em.getTransaction().commit();
+                if (em.getTransaction().getRollbackOnly()) {
+                    em.getTransaction().rollback();
+                } else {
+                    em.getTransaction().commit();
+                }
             }
         }
     }
@@ -136,23 +140,35 @@ public class JpaLoader {
                 }
                 dataSetClasses.get(clazz).add(obj);
                 try {
-                    this.em.merge(obj);
-                    em.flush();
-                    Logger
-                            .getLogger(JpaLoader.class
-                                    .getName()).log(Level.INFO,
+                    //Detect if the test data already exists in target test db
+                    //If it does OptomistocLockException will be throw and transaction;
+                    //rolled back.
+                    Integer id = (Integer) obj.getClass().getMethod("getId").invoke(obj);
+                    if (id != null) {
+                        Object existingObject = this.em.find(clazz, id);
+                        if (existingObject != null) {
+                            //if data exists then read from database and do not insert.
+                            dataSetClasses.get(clazz).remove(obj);
+                            dataSetClasses.get(clazz).add(existingObject);
+                            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, "Recovered from duplicate data ..."
+                                    + "data recovery attempt");
+                        } else {
+                            //if object doesn't exist then insert it.
+                            this.em.merge(obj);
+                            //em.flush();
+                            Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO,
                                     MessageFormat.format("Loaded {0} entity ", clazz));
-                } catch (OptimisticLockException ex) {
+                        }
+                    }
+                } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                     Logger.getLogger(JpaLoader.class
                             .getName()).log(Level.SEVERE,
-                                    MessageFormat.format("Optimisited lock exception. Make sure you "
-                                            + "database is emtpy before test run.", clazz), ex);
+                                    MessageFormat.format("Reflection error", clazz), ex);
                 } catch (Exception ex) {
                     Logger.getLogger(JpaLoader.class
                             .getName()).log(Level.SEVERE,
                                     MessageFormat.format("Error in code", clazz), ex);
                 }
-
             } catch (InstantiationException | IllegalAccessException ex) {
                 Logger.getLogger(JpaLoader.class
                         .getName()).log(Level.SEVERE,
@@ -179,7 +195,8 @@ public class JpaLoader {
                         }
                         );
             }
-        });
+        }
+        );
     }
 
     private void updateObject(Object obj, Method[] methods, DataSetEntry entry)
@@ -210,6 +227,7 @@ public class JpaLoader {
                                     if (Objects.equals(dataSetObjId, foreignId)) {
                                         //set foreign object
                                         m.invoke(obj, dataSetObject);
+                                        entry.removeProperty(propertyName.toString());
                                         count.incrementAndGet();
 
                                     }
@@ -315,11 +333,16 @@ public class JpaLoader {
             }
             Set<Class> set = dataSetClasses.keySet();
             Iterator<Class> itr = set.iterator();
-            itr.next();
-            delete(itr.next(), itr);
+            if (itr.hasNext()) {
+                delete(itr.next(), itr);
+            }
         } finally {
             if (!active) {
-                em.getTransaction().commit();
+                if (em.getTransaction().getRollbackOnly()) {
+                    em.getTransaction().rollback();
+                } else {
+                    em.getTransaction().commit();
+                }
             }
         }
     }

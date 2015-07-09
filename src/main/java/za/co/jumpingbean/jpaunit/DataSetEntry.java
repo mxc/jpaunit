@@ -34,34 +34,34 @@ public class DataSetEntry {
     private Class clazz;
     private final List<String> columns = new ArrayList<>();
     private final List<String> values = new ArrayList<>();
-    
-    public DataSetEntry(Integer index,String clazz) throws ClassNotFoundException{
-        this.clazz=Class.forName(clazz);
-        this.entryIndex=index;
+
+    public DataSetEntry(Integer index, String clazz) throws ClassNotFoundException {
+        this.clazz = Class.forName(clazz);
+        this.entryIndex = index;
     }
 
-    public void addProperty(String column,String value){
+    public void addProperty(String column, String value) {
         columns.add(column);
         values.add(value);
     }
 
-    public List<String> getProperties(){
+    public List<String> getProperties() {
         return columns;
     }
-    
-    public Integer getIndexOfPropert(String propertyName){
+
+    public Integer getIndexOfPropert(String propertyName) {
         return columns.indexOf(propertyName);
     }
-    
-    public String getValue(String column){
+
+    public String getValue(String column) {
         int index = columns.indexOf(column);
-        if (index==-1) {
-            Logger.getLogger(DataSetEntry.class.getName()).log(Level.WARNING,"{0} not found in columns list",column);
+        if (index == -1) {
+            Logger.getLogger(DataSetEntry.class.getName()).log(Level.WARNING, "{0} not found in columns list", column);
             return null;
         }
         return values.get(index);
     }
-    
+
     public Integer getEntryIndex() {
         return entryIndex;
     }
@@ -82,7 +82,7 @@ public class DataSetEntry {
     public String toString() {
         return "DataSetEntry{" + "index=" + entryIndex + ", clazz=" + clazz + '}';
     }
-    
+
     @Override
     public boolean equals(Object obj) {
         if (obj == null) {
@@ -110,13 +110,15 @@ public class DataSetEntry {
     }
 
     public void removeProperty(String property) {
-        try{
-        int indexOf = columns.indexOf(property);
-        columns.remove(indexOf);
-        values.remove(indexOf);
-        }catch(IndexOutOfBoundsException ex){
+        try {
+            int indexOf = columns.indexOf(property);
+            if (indexOf != -1) {
+                columns.remove(indexOf);
+                values.remove(indexOf);
+            }
+        } catch (IndexOutOfBoundsException ex) {
             Logger.getLogger(DataSetEntry.class.getName()).log(Level.SEVERE,
-                    MessageFormat.format("Error removing property {0}",property),ex);
+                    MessageFormat.format("Error removing property {0}", property), ex);
         }
     }
 
