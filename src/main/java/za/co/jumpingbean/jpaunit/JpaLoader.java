@@ -133,13 +133,12 @@ public class JpaLoader {
                 Object obj = clazz.newInstance();
                 //Set object properties
                 updateObject(obj, methods, entry);
-                //Add dataset object to cache of dataset objects as it
-                //may be used in a foregin key relationship later
-                if (!dataSetClasses.containsKey(clazz)) {
-                    dataSetClasses.put(clazz, new LinkedList());
-                }
-                dataSetClasses.get(clazz).add(obj);
                 try {
+                    //Create linked list in datSetClasses table to
+                    //prevent null pointer checks
+                    if (!dataSetClasses.containsKey(clazz)) {
+                        dataSetClasses.put(clazz, new LinkedList());
+                    }
                     //Detect if the test data already exists in target test db
                     //If it does OptomistocLockException will be throw and transaction;
                     //rolled back.
@@ -154,8 +153,10 @@ public class JpaLoader {
                                     + "data recovery attempt");
                         } else {
                             //if object doesn't exist then insert it.
-                            this.em.merge(obj);
-                            //em.flush();
+                            obj = this.em.merge(obj);
+                            //Add dataset object to cache of dataset objects as it
+                            //may be used in a foregin key relationship later
+                            dataSetClasses.get(clazz).add(obj);
                             Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO,
                                     MessageFormat.format("Loaded {0} entity ", clazz));
                         }

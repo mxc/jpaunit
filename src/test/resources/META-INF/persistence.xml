@@ -21,6 +21,7 @@
             <property name="javax.persistence.jdbc.driver" value="com.mysql.jdbc.Driver"/>
             <property name="javax.persistence.jdbc.password" value="dagama"/>
             <property name="javax.persistence.schema-generation.database.action" value="drop-and-create"/>
+            <property name="javax.persistence.schema-generation.create-source" value="metadata" />           
             <!--<property name="hibernate.connection.release_mode" value="after_transaction"/>-->            
         </properties>
     </persistence-unit>

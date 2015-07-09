@@ -50,7 +50,8 @@ public class JpaLoaderDataExistsTest {
         em.getTransaction().begin();
         SimpleBigDecimalEntity entity = new SimpleBigDecimalEntity();
         entity.setBigDecimalValue(new BigDecimal("1000.24"));
-        em.persist(entity);
+        entity.setId(1);
+        em.merge(entity);
         em.getTransaction().commit();
         
         JpaLoader loader = new JpaLoader();
