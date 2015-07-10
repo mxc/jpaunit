@@ -19,6 +19,7 @@ package za.co.jumpingbean.jpaunit;
 
 import za.co.jumpingbean.jpaunit.converter.Converter;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -242,7 +243,10 @@ public class JpaLoader {
                         try {
                             String property = m.getName().substring(3);
                             Object enumVal;
-                            Enumerated enumerated = (Enumerated) parameterClass.getDeclaredAnnotation(Enumerated.class);
+                            StringBuilder str = new StringBuilder(property);
+                            str.setCharAt(1,Character.toUpperCase(str.charAt(0)));
+                            Field field = obj.getClass().getField(str.toString());
+                            Enumerated enumerated = field.getAnnotation(Enumerated.class);
                             if (enumerated.value() == EnumType.STRING) {
                                 enumVal = Enum.valueOf(parameterClass, entry.getValue(property));
                             } else {
@@ -250,7 +254,9 @@ public class JpaLoader {
                             }
                             m.invoke(obj, enumVal);
                             entry.removeProperty(property);
-                        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                        } catch (IllegalAccessException | IllegalArgumentException |
+                                InvocationTargetException | NoSuchFieldException | 
+                                SecurityException  ex) {
                             Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, 
                                     MessageFormat.format("Error converting enum type {0}",parameterClass), ex);
                         }
