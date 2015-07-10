@@ -19,22 +19,25 @@ package za.co.jumpingbean.jpaunit.test;
 
 import java.math.BigDecimal;
 import java.text.MessageFormat;
+import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
+import za.co.jumpingbean.jpaunit.test.model.EntityWithEnum;
 import za.co.jumpingbean.jpaunit.test.model.ForeignEntity;
-import za.co.jumpingbean.jpaunit.test.model.SimpleBigDecimalEntity;
+import za.co.jumpingbean.jpaunit.test.model.NewEnum;
 
 /**
  *
  * @author mark
  */
-public class JpaLoaderDataExistsTest {
+public class JpaLoaderEntityWithEnum {
 
     private static EntityManager em;
     private final String modelPackageName = "za.co.jumpingbean.jpaunit.test.model";
@@ -45,33 +48,21 @@ public class JpaLoaderDataExistsTest {
     }
 
     @Test
-    public void objectExistsTest() throws ParserException {
-        //insert object into database before load
-        em.getTransaction().begin();
-        SimpleBigDecimalEntity entity = new SimpleBigDecimalEntity();
-        entity.setBigDecimalValue(new BigDecimal("1000.24"));
-        entity.setId(1);
-        em.merge(entity);
-        em.getTransaction().commit();
-        
+    public void ForeginTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/foreignentity.xml", modelPackageName, new SaxHandler(), em);
+        loader.init("META-INF/entitywithenum.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-     
         em.clear();
         em.getTransaction().begin();
         try {
-            ForeignEntity ent = em.find(ForeignEntity.class, 1);
-            BigDecimal result = new BigDecimal("1000.24");
-            Assert.assertTrue(MessageFormat.format("Expected {0} but got {1}", result, ent.getSimpleBigDecimal().getBigDecimalValue()),
-                    result.compareTo(ent.getSimpleBigDecimal().getBigDecimalValue()) == 0);
+            Query qry = em.createQuery("Select c from EntityWithEnum c where c.enumValue=?");
+            qry.setParameter(1,NewEnum.UBUNTU);
+            List<EntityWithEnum> ent =  qry.getResultList();
+            Assert.assertEquals(1, ent.size());
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
-        loader.delete();
-        em.getTransaction().begin();
-        ForeignEntity ent = em.find(ForeignEntity.class, 1);
-        Assert.assertNull(ent);
-        em.getTransaction().commit();
     }
+
 }

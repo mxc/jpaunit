@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.text.MessageFormat;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -33,7 +34,7 @@ import za.co.jumpingbean.jpaunit.test.model.ForeignEntity;
  *
  * @author mark
  */
-public class JpaLoaderDeleteTest {
+public class JpaLoaderDatasetCleanUpTest {
 
     private static EntityManager em;
     private final String modelPackageName = "za.co.jumpingbean.jpaunit.test.model";
@@ -44,24 +45,24 @@ public class JpaLoaderDeleteTest {
     }
 
     @Test
-    public void ForeginTest() throws ParserException {
+    public void dataSetCleanUpTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/foreignentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
+        Integer id;
         em.clear();
         em.getTransaction().begin();
-        try {
-            ForeignEntity ent = em.find(ForeignEntity.class, 1);
-            BigDecimal result = new BigDecimal("1000.24");
-            Assert.assertTrue(MessageFormat.format("Expected {0} but got {1}", result, ent.getSimpleBigDecimal().getBigDecimalValue()),
-                    result.compareTo(ent.getSimpleBigDecimal().getBigDecimalValue()) == 0);
-        } finally {
-            em.getTransaction().commit();
-        }
+        Query qry = em.createQuery("Select c from ForeignEntity c");
+        qry.setMaxResults(1);
+        ForeignEntity ent = (ForeignEntity) qry.getSingleResult();
+        id = ent.getId();
+        Assert.assertNotNull("Expected object to be null", ent);
+        em.getTransaction().commit();
         loader.delete();
         em.getTransaction().begin();
-        ForeignEntity ent = em.find(ForeignEntity.class, 1);
+        ent = em.find(ForeignEntity.class, id);
         Assert.assertNull(ent);
         em.getTransaction().commit();
     }
+
 }

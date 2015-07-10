@@ -19,6 +19,7 @@ package za.co.jumpingbean.jpaunit.test;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -50,11 +51,14 @@ public class JpaLoaderEmbeddedEntityTest {
         em.clear();
         em.getTransaction().begin();
         try {
-            EntityWithEmbeddedValue ent = em.find(EntityWithEmbeddedValue.class, 3);
+            Query qry = em.createQuery("Select c from EntityWithEmbeddedValue c where c.embeddableEntity.stringValue=?");
+            qry.setParameter(1,"String Value 2-3");
+            EntityWithEmbeddedValue ent = (EntityWithEmbeddedValue) qry.getSingleResult();
             Assert.assertNotNull("Should have found entity with id 3", ent);
             Assert.assertEquals("Failed to retrieve correct stringValue", new Integer(130), ent.getEmbeddableEntity().getIntValue());
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
     }
 }

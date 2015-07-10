@@ -108,6 +108,7 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
     public void process(String fileName,String modelPackageName) throws ParserException {
         this.fileName = fileName;
         this.modelPackageName=modelPackageName;
+        this.dataSetEnties.clear();
         try {
             SAXParser parser;
             SAXParserFactory parserFactor = SAXParserFactory.newInstance();

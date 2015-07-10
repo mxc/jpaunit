@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.text.MessageFormat;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -51,12 +52,15 @@ public class JpaLoaderForeignEntityTest {
         em.clear();
         em.getTransaction().begin();
         try {
-            ForeignEntity ent = em.find(ForeignEntity.class, 1);
+            Query qry = em.createQuery("Select c from ForeignEntity c where c.stringValue=?");
+            qry.setParameter(1,"String Value");
+            ForeignEntity ent = (ForeignEntity) qry.getSingleResult();
             BigDecimal result = new BigDecimal("1000.24");
             Assert.assertTrue(MessageFormat.format("Expected {0} but got {1}",result,ent.getSimpleBigDecimal().getBigDecimalValue()),
             result.compareTo(ent.getSimpleBigDecimal().getBigDecimalValue())==0);
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
     }
 

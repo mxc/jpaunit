@@ -19,12 +19,15 @@ package za.co.jumpingbean.jpaunit.test;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
+import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 import javax.xml.parsers.ParserConfigurationException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -60,157 +63,166 @@ public class JpaLoaderSimpleEntityTest {
     }
 
     @Test
-    public void JpaSimpleStringEntityTest() throws ParserException  {
+    public void JpaSimpleStringEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/simplestringentity.xml", modelPackageName,new SaxHandler(), em);
+        loader.init("META-INF/simplestringentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         em.clear();
         em.getTransaction().begin();
         try {
-            //FIXME: Throws no such field error huh?
-//        Query qry = em.createQuery(
-//                "Select s from SimpleStringEntity s");
-//        List<SimpleStringEntity> list = qry.getResultList();
-//        Assert.assertEquals("Should have loaded 3 SimpleStringEntity object", 3, list.size());
-            SimpleStringEntity ent = em.find(SimpleStringEntity.class, 3);
-            Assert.assertNotNull("Should have found entity with id 3", ent);
-            Assert.assertEquals("Failed to retrieve correct stringValue", "test3", ent.getStringValue());
+
+            Query qry = em.createQuery(
+                    "Select s from SimpleStringEntity s");
+            List<SimpleStringEntity> list = qry.getResultList();
+            Assert.assertEquals("Should have loaded 3 SimpleIntegerEntity object", 3, list.size());
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
     }
 
     @Test
-    public void JpaSimpleDateEntityTest() throws ParserException  {
+    public void JpaSimpleDateEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/simpledateentity.xml", modelPackageName,new SaxHandler(), em);
+        loader.init("META-INF/simpledateentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         em.clear();
         em.getTransaction().begin();
         try {
-            SimpleDateEntity ent = em.find(SimpleDateEntity.class, 3);
             Calendar cal = Calendar.getInstance();
-            cal.set(Calendar.YEAR,2018);
-            cal.set(Calendar.MONTH,Calendar.JULY);
-            cal.set(Calendar.DATE,6);
-            cal.set(Calendar.HOUR_OF_DAY,0);
-            cal.set(Calendar.MINUTE,0);
-            cal.set(Calendar.SECOND,0);
-            cal.set(Calendar.MILLISECOND,0);
+            cal.set(Calendar.YEAR, 2018);
+            cal.set(Calendar.MONTH, Calendar.JULY);
+            cal.set(Calendar.DATE, 6);
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            Query qry = em.createQuery("Select c from SimpleDateEntity c where c.dateValue=?");
+            qry.setParameter(1,cal.getTime());
+            SimpleDateEntity ent = (SimpleDateEntity) qry.getSingleResult();
             Assert.assertNotNull("Should have found entity with id 3", ent);
             Assert.assertTrue(MessageFormat.format("Date do not match. Expected {0} but was {1}",
-                    cal.getTime(),ent.getDateValue()),cal.getTime().compareTo(ent.getDateValue())==0);
+                    cal.getTime(), ent.getDateValue()), cal.getTime().compareTo(ent.getDateValue()) == 0);
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
-    }    
-    
-    
+
+    }
+
     @Test
     public void JpaSimpleLocalDateEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/simplelocaldateentity.xml", modelPackageName,new SaxHandler(), em);
+        loader.init("META-INF/simplelocaldateentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         em.clear();
         em.getTransaction().begin();
         try {
-            LocalDate lDate = LocalDate.parse("2018-07-06",DateTimeFormatter.ISO_DATE);
-            SimpleLocalDateEntity ent = em.find(SimpleLocalDateEntity.class, 3);
-            Assert.assertNotNull("Should have found entity with id 3", ent);
-            Assert.assertTrue(MessageFormat.format("Date do not match. Expected {0} but was {1}",lDate,ent.getLocalDate()),
-                    lDate.compareTo(ent.getLocalDate())==0);
+            LocalDate lDate = LocalDate.parse("2018-07-06", DateTimeFormatter.ISO_DATE);
+            Query qry = em.createQuery("Select s from SimpleLocalDateEntity s where s.localDate=?");
+            qry.setParameter(1, lDate);
+            SimpleLocalDateEntity ent = (SimpleLocalDateEntity) qry.getSingleResult();
+            Assert.assertNotNull("Should have found entity with local date of 2018-07-06", ent);
+            Assert.assertTrue(MessageFormat.format("Date do not match. Expected {0} but was {1}", lDate, ent.getLocalDate()),
+                    lDate.compareTo(ent.getLocalDate()) == 0);
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
-    }     
-    
-    
+
+    }
+
     @Test
-    public void JpaSimpleIntegerEntityTest() throws ParserException  {
+    public void JpaSimpleIntegerEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/simpleintegerentity.xml", modelPackageName,new SaxHandler(), em);
+        loader.init("META-INF/simpleintegerentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         em.clear();
         em.getTransaction().begin();
         try {
-            SimpleIntegerEntity ent = em.find(SimpleIntegerEntity.class, 3);
-            Assert.assertNotNull("Should have found entity with id 3", ent);
-            Assert.assertEquals("Failed to retrieve correct integerValue", new Integer(1212), ent.getIntegerValue());
+            Query qry = em.createQuery(
+                    "Select s from SimpleIntegerEntity s");
+            List<SimpleStringEntity> list = qry.getResultList();
+            Assert.assertEquals("Failed to retrieve correct integerValue", 3, list.size());
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
     }
 
     @Test
     public void JpaSimpleBooleanEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/simplebooleanentity.xml", modelPackageName, new SaxHandler(),em);
+        loader.init("META-INF/simplebooleanentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         em.clear();
         em.getTransaction().begin();
         try {
-            //FIXME: Throws no such field error huh?
-//        Query qry = em.createQuery(
-//                "Select s from SimpleBooleanEntity s");
-//        List<SimpleStringEntity> list = qry.getResultList();
-//        Assert.assertEquals("Should have loaded 4 SimpleBooleanEntity object", 4, list.size());
-            SimpleBooleanEntity ent = em.find(SimpleBooleanEntity.class, 3);
-            Assert.assertNotNull("Should have found entity with id 3", ent);
-            Assert.assertTrue("Failed to retrieve correct booleanValue", ent.getBooleanValue());
+            Query qry = em.createQuery(
+                    "Select s from SimpleBooleanEntity s where booleanValue =?");
+            qry.setParameter(1, true);
+            List<SimpleStringEntity> list = qry.getResultList();
+            Assert.assertEquals("Should have loaded 2 SimpleBooleanEntity objects with true", 2, list.size());
 
-            ent = em.find(SimpleBooleanEntity.class, 2);
-            Assert.assertNotNull("Should have found entity with id 2", ent);
-            Assert.assertFalse("Failed to retrieve correct booleanValue", ent.getBooleanValue());
+            qry.setParameter(1, false);
+            list = qry.getResultList();
+            Assert.assertEquals("Should have loaded 2 SimpleBooleanEntity with false", 2, list.size());
 
-            ent = em.find(SimpleBooleanEntity.class, 1);
-            Assert.assertNotNull("Should have found entity with id 1", ent);
-            Assert.assertFalse("Failed to retrieve correct booleanValue", ent.getBooleanValue());
-
-            ent = em.find(SimpleBooleanEntity.class, 4);
-            Assert.assertNotNull("Should have found entity with id 4", ent);
-            Assert.assertTrue("Failed to retrieve correct booleanValue", ent.getBooleanValue());
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
     }
 
     @Test
-    public void JpaSimpleBigDecimalEntityTest() throws ParserException  {
+    public void JpaSimpleBigDecimalEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/simplebigdecimalentity.xml", modelPackageName,new SaxHandler(), em);
+        loader.init("META-INF/simplebigdecimalentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         em.clear();
         em.getTransaction().begin();
         try {
-            SimpleBigDecimalEntity ent = em.find(SimpleBigDecimalEntity.class, 3);
-            Assert.assertNotNull("Should have found entity with id 3", ent);
-            BigDecimal comp =new BigDecimal("1024");
-            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}",comp,ent.getBigDecimalValue()),
-                    ent.getBigDecimalValue().compareTo(comp)==0);
-            
-            ent = em.find(SimpleBigDecimalEntity.class, 1);
-            Assert.assertNotNull("Should have found entity with id 1", ent);
-            comp =new BigDecimal("1000.24");
-            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}",comp,ent.getBigDecimalValue()),
-                    ent.getBigDecimalValue().compareTo(comp)==0);
+            Query qry = em.createQuery("Select c from SimpleBigDecimalEntity c where c.bigDecimalValue=?");
+            BigDecimal dec = new BigDecimal("1024");
+            qry.setParameter(1, dec);
+            SimpleBigDecimalEntity ent = (SimpleBigDecimalEntity) qry.getSingleResult();
+            Assert.assertNotNull("Should have found entity with id balance 1024", ent);
+
+            BigDecimal comp = new BigDecimal("1024");
+            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}", comp, ent.getBigDecimalValue()),
+                    ent.getBigDecimalValue().compareTo(comp) == 0);
+
+            comp = new BigDecimal("1000.24");
+            qry.setParameter(1, comp);
+            ent = (SimpleBigDecimalEntity) qry.getSingleResult();
+            Assert.assertNotNull("Should have found entity with balance 1000.24", ent);
+
+            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}", comp, ent.getBigDecimalValue()),
+                    ent.getBigDecimalValue().compareTo(comp) == 0);
 
             //SimpeBigDecimalEntity has been defined with a precision of 4 decimal places
-            ent = em.find(SimpleBigDecimalEntity.class, 2);
-            Assert.assertNotNull("Should have found entity with id 2", ent);
-            comp =new BigDecimal("999999999999.9999");
-            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}",comp,ent.getBigDecimalValue()),
-                    ent.getBigDecimalValue().compareTo(comp)==0);
+            comp = new BigDecimal("999999999999.9999");
+            qry.setParameter(1, comp);
+            ent = (SimpleBigDecimalEntity) qry.getSingleResult();
+            Assert.assertNotNull("Should have found entity with balance 999999999999.9999", ent);
+
+            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}", comp, ent.getBigDecimalValue()),
+                    ent.getBigDecimalValue().compareTo(comp) == 0);
 
             //SimpeBigDecimalEntity has been defined with a precision of 4 decimal places
             //The actual value set is 999.99999 -> this gets rounded to 1000
-            ent = em.find(SimpleBigDecimalEntity.class, 4);
-            Assert.assertNotNull("Should have found entity with id 4", ent);
-            comp =new BigDecimal("1000");
-            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}",comp.intValue(),ent.getBigDecimalValue().intValue()),
-                    ent.getBigDecimalValue().intValue() ==comp.intValue());            
+            comp = new BigDecimal("1000");
+            qry.setParameter(1, comp);
+            ent = (SimpleBigDecimalEntity) qry.getSingleResult();
+            Assert.assertNotNull("Should have found entity with a balance of 1000 - rounded up from 999.99999", ent);
+
+            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}", comp.intValue(), ent.getBigDecimalValue().intValue()),
+                    ent.getBigDecimalValue().intValue() == comp.intValue());
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
-    }    
-    
+
+    }
+
 }

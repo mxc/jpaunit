@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.text.MessageFormat;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
+import javax.persistence.Query;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,12 +41,16 @@ public class JpaLoaderMissingPropertiesTest {
         em.clear();
         em.getTransaction().begin();
         try {
-            ForeignEntity ent = em.find(ForeignEntity.class, 1);
             BigDecimal result = new BigDecimal("1000.24");
-            Assert.assertTrue(MessageFormat.format("Expected {0} but got {1}",result,ent.getSimpleBigDecimal().getBigDecimalValue()),
-            result.compareTo(ent.getSimpleBigDecimal().getBigDecimalValue())==0);
+            Query qry = em.createQuery("Select c from ForeignEntity c where c.simpleBigDecimal.bigDecimalValue=?");
+            qry.setParameter(1, result);
+            ForeignEntity ent = (ForeignEntity) qry.getSingleResult();
+            Assert.assertTrue(MessageFormat.format("Expected {0} but got {1}", result, ent.getSimpleBigDecimal().getBigDecimalValue()),
+                    result.compareTo(ent.getSimpleBigDecimal().getBigDecimalValue()) == 0);
         } finally {
             em.getTransaction().commit();
+            loader.delete();
         }
+
     }
 }
