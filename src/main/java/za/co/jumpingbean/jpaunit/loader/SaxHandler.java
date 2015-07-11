@@ -75,12 +75,7 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
             //count.set(0);
             //Iterate over attribues  and populate columns and values list
             IntStream.range(0, attributes.getLength()).forEach((int i) -> {
-                //Convert first letter of attribute name to uppercase so it matches
-                //standard naming convention for Java classes
-                StringBuilder strBufName = new StringBuilder(attributes.getLocalName(i));
-                strBufName.setCharAt(0, Character.toUpperCase(strBufName.charAt(0)));
-                String strName = strBufName.toString();
-                entry.addProperty(strName, attributes.getValue(i));
+                entry.addProperty(attributes.getLocalName(i), attributes.getValue(i));
             });
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(SaxHandler.class.getName()).log(Level.SEVERE, "Class not found for {0}", className);
@@ -105,9 +100,9 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
     }
 
     @Override
-    public void process(String fileName,String modelPackageName) throws ParserException {
+    public void process(String fileName, String modelPackageName) throws ParserException {
         this.fileName = fileName;
-        this.modelPackageName=modelPackageName;
+        this.modelPackageName = modelPackageName;
         this.dataSetEnties.clear();
         try {
             SAXParser parser;
@@ -116,7 +111,7 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
             parser.parse(ClassLoader.getSystemResourceAsStream(fileName), this);
         } catch (ParserConfigurationException | SAXException | IOException ex) {
             Logger.getLogger(SaxHandler.class.getName()).log(Level.SEVERE, "Error processing xml parser", ex);
-            throw new ParserException("Error processing SAX XML parser");
+            throw new ParserException("Error processing SAX XML parser", ex);
         }
     }
 

@@ -17,8 +17,6 @@
  */
 package za.co.jumpingbean.jpaunit.test;
 
-import java.math.BigDecimal;
-import java.text.MessageFormat;
 import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
@@ -30,14 +28,13 @@ import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
 import za.co.jumpingbean.jpaunit.test.model.EntityWithEnum;
-import za.co.jumpingbean.jpaunit.test.model.ForeignEntity;
 import za.co.jumpingbean.jpaunit.test.model.NewEnum;
 
 /**
  *
  * @author mark
  */
-public class JpaLoaderEntityWithEnum {
+public class JpaLoaderEntityWithEnumTest {
 
     private static EntityManager em;
     private final String modelPackageName = "za.co.jumpingbean.jpaunit.test.model";
@@ -48,7 +45,7 @@ public class JpaLoaderEntityWithEnum {
     }
 
     @Test
-    public void ForeginTest() throws ParserException {
+    public void entityWithStringEnumTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/entitywithenum.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
@@ -65,4 +62,22 @@ public class JpaLoaderEntityWithEnum {
         }
     }
 
+    @Test
+    public void entityWithOrdinalEnumTest() throws ParserException {
+        JpaLoader loader = new JpaLoader();
+        loader.init("META-INF/entitywithenum.xml", modelPackageName, new SaxHandler(), em);
+        loader.load();
+        em.clear();
+        em.getTransaction().begin();
+        try {
+            Query qry = em.createQuery("Select c from EntityWithOrdinalEnum c where c.enumValue=?");
+            qry.setParameter(1,NewEnum.UBUNTU);
+            List<EntityWithEnum> ent =  qry.getResultList();
+            Assert.assertEquals(1, ent.size());
+        } finally {
+            em.getTransaction().commit();
+            loader.delete();
+        }
+    }    
+    
 }

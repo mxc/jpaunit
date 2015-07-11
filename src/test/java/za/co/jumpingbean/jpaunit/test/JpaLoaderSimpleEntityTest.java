@@ -17,9 +17,7 @@
  */
 package za.co.jumpingbean.jpaunit.test;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -28,18 +26,14 @@ import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
 import javax.persistence.Query;
-import javax.xml.parsers.ParserConfigurationException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.xml.sax.SAXException;
 import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
 import za.co.jumpingbean.jpaunit.test.model.SimpleBigDecimalEntity;
-import za.co.jumpingbean.jpaunit.test.model.SimpleBooleanEntity;
 import za.co.jumpingbean.jpaunit.test.model.SimpleDateEntity;
-import za.co.jumpingbean.jpaunit.test.model.SimpleIntegerEntity;
 import za.co.jumpingbean.jpaunit.test.model.SimpleLocalDateEntity;
 import za.co.jumpingbean.jpaunit.test.model.SimpleStringEntity;
 
@@ -63,7 +57,7 @@ public class JpaLoaderSimpleEntityTest {
     }
 
     @Test
-    public void JpaSimpleStringEntityTest() throws ParserException {
+    public void jpaSimpleStringEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplestringentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
@@ -82,7 +76,7 @@ public class JpaLoaderSimpleEntityTest {
     }
 
     @Test
-    public void JpaSimpleDateEntityTest() throws ParserException {
+    public void jpaSimpleDateEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simpledateentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
@@ -111,7 +105,7 @@ public class JpaLoaderSimpleEntityTest {
     }
 
     @Test
-    public void JpaSimpleLocalDateEntityTest() throws ParserException {
+    public void jpaSimpleLocalDateEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplelocaldateentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
@@ -133,7 +127,7 @@ public class JpaLoaderSimpleEntityTest {
     }
 
     @Test
-    public void JpaSimpleIntegerEntityTest() throws ParserException {
+    public void jpaSimpleIntegerEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simpleintegerentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
@@ -151,7 +145,7 @@ public class JpaLoaderSimpleEntityTest {
     }
 
     @Test
-    public void JpaSimpleBooleanEntityTest() throws ParserException {
+    public void jpaSimpleBooleanEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplebooleanentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
@@ -175,7 +169,7 @@ public class JpaLoaderSimpleEntityTest {
     }
 
     @Test
-    public void JpaSimpleBigDecimalEntityTest() throws ParserException {
+    public void jpaSimpleBigDecimalEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplebigdecimalentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();

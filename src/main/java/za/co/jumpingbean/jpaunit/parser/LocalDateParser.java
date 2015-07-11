@@ -15,24 +15,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.converter;
+package za.co.jumpingbean.jpaunit.parser;
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 
 /**
  *
  * @author mark
  */
-public class BigDecimalConverter implements Converter<BigDecimal> {
+public class LocalDateParser implements Parser<LocalDate> {
 
     @Override
-    public BigDecimal convert(String elm) throws CannotConvertException {
-        try{    
-        return new BigDecimal(elm);
-        } catch (NumberFormatException ex){
-            throw new CannotConvertException(BigDecimal.class, elm);
-        }
+    public LocalDate parse(String elm) throws CannotConvertException {
+           try{
+               return LocalDate.parse(elm);
+           }catch(DateTimeParseException ex){
+               throw new CannotConvertException(LocalDate.class, elm);
+           }
     }
     
 }

@@ -3,4 +3,5 @@
     <EntityWithEnum id="1" stringValue="String 1" enumValue="UBUNTU" />
     <EntityWithEnum id="2" stringValue="String 2" enumValue="FREEBSD" />
     <EntityWithEnum id="3" stringValue="String 3" enumValue="RASPBIAN" />
+    <EntityWithOrdinalEnum id="1" stringValue="String 3" enumValue="0" />
 </dataset>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SubClassEntity id="1" stringValue="test1" />
+    <SubClassEntity id="2" stringValue="test2" />
+    <SubClassEntity id="3" stringValue="test3" />
+</dataset>

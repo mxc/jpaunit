@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.converter;
+package za.co.jumpingbean.jpaunit.parser;
 
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 
@@ -23,17 +23,15 @@ import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
  *
  * @author mark
  */
-public class StringConverter implements Converter<String>{
+public class IntegerParser implements Parser<Integer> {
 
-    /**
-     *
-     * @param elm
-     * @return
-     * @throws CannotConvertException
-     */
     @Override
-    public String convert(String elm) throws CannotConvertException {
-        return elm;
+    public Integer parse(String elm) throws CannotConvertException {
+        try{
+        return Integer.parseInt(elm);
+        } catch(NumberFormatException ex){
+            throw new CannotConvertException(Integer.class, elm);
+        }
     }
     
 }

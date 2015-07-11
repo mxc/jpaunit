@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.converter;
+package za.co.jumpingbean.jpaunit.parser;
 
 import java.text.MessageFormat;
 import java.text.ParseException;
@@ -30,7 +30,7 @@ import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
  *
  * @author mark
  */
-public class DateConverter implements Converter<Date> {
+public class DateParser implements Parser<Date> {
 
     /**
      * The function expect to receive a date string in the following format
@@ -42,7 +42,7 @@ public class DateConverter implements Converter<Date> {
      * @throws CannotConvertException
      */
     @Override
-    public Date convert(String elm) throws CannotConvertException {
+    public Date parse(String elm) throws CannotConvertException {
         SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd");
         try {
             Date date = fmt.parse(elm);
@@ -54,7 +54,7 @@ public class DateConverter implements Converter<Date> {
             cal.set(Calendar.MILLISECOND,0);
             return cal.getTime();
         } catch (ParseException ex) {
-            Logger.getLogger(DateConverter.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DateParser.class.getName()).log(Level.SEVERE, null, ex);
             throw new CannotConvertException(Date.class, MessageFormat
                     .format("Cannot convert date format {0} to date. "
                             + "Expected format yyyy-mm-dd", elm));

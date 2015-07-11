@@ -15,17 +15,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.converter;
+package za.co.jumpingbean.jpaunit.parser;
 
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
-
-
 
 /**
  *
  * @author mark
  */
-@FunctionalInterface
-public interface Converter<R> {
-     public R convert(String elm) throws CannotConvertException;
+public class StringParser implements Parser<String>{
+
+    /**
+     *
+     * @param elm
+     * @return
+     * @throws CannotConvertException
+     */
+    @Override
+    public String parse(String elm) throws CannotConvertException {
+        return elm;
+    }
+    
 }

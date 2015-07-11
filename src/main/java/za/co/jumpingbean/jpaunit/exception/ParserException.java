@@ -23,7 +23,8 @@ package za.co.jumpingbean.jpaunit.exception;
  */
 public class ParserException extends Exception {
 
-    public ParserException(String message) {
+    public ParserException(String message,Throwable ex) {
         super(message);
+        this.addSuppressed(ex);
     }
 }

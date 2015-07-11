@@ -19,10 +19,14 @@ package za.co.jumpingbean.jpaunit;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
 
 /**
  *
@@ -34,13 +38,41 @@ public class DataSetEntry {
     private Class clazz;
     private final List<String> columns = new ArrayList<>();
     private final List<String> values = new ArrayList<>();
+    //Create a lookup for attribute overrides
+    private final Map<String, String> overrides = new HashMap<>();
 
     public DataSetEntry(Integer index, String clazz) throws ClassNotFoundException {
         this.clazz = Class.forName(clazz);
         this.entryIndex = index;
+        this.updateOverrides();
+    }
+
+    private void updateOverrides() {
+        Class currentClass = clazz;
+        while (currentClass.getSuperclass() != Object.class) {
+            AttributeOverrides attributeOverrides[] = (AttributeOverrides[]) currentClass.getAnnotationsByType(AttributeOverrides.class);
+            for (AttributeOverrides os : attributeOverrides) {
+                for (AttributeOverride o : os.value()) {
+                    String orignalName = o.name();
+                    String overridenName = o.column().name();
+                    overrides.put(overridenName, orignalName);
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
     }
 
     public void addProperty(String column, String value) {
+        //Check to see if the columns has had its name changed via @AttributeOverrides
+        //replace with original property value.
+        if (column.endsWith("_id")) {
+            String tmpColumn = column.substring(0, column.length() - 3);
+            if (overrides.containsKey(tmpColumn)) {
+                column = overrides.get(tmpColumn) + "_id";
+            }
+        } else if (overrides.containsKey(column)) {
+            column = overrides.get(column);
+        }
         columns.add(column);
         values.add(value);
     }
@@ -80,7 +112,7 @@ public class DataSetEntry {
 
     @Override
     public String toString() {
-        return "DataSetEntry{" + "index=" + entryIndex + ", clazz=" + clazz + '}';
+        return "DataSetEntry{" + "entryIndex=" + entryIndex + ", clazz=" + clazz + ", columns=" + columns + ", values=" + values + '}';
     }
 
     @Override

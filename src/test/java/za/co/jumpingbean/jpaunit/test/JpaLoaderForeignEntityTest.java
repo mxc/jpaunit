@@ -45,7 +45,7 @@ public class JpaLoaderForeignEntityTest {
     }
 
     @Test
-    public void ForeginTest() throws ParserException {
+    public void foreignTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/foreignentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();

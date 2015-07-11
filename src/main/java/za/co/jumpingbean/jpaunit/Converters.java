@@ -17,41 +17,59 @@
  */
 package za.co.jumpingbean.jpaunit;
 
-import za.co.jumpingbean.jpaunit.converter.Converter;
+import za.co.jumpingbean.jpaunit.parser.Parser;
 import java.util.HashMap;
 import za.co.jumpingbean.jpaunit.exception.ConverterAlreadyDefinedException;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 import za.co.jumpingbean.jpaunit.exception.NoConverterDefinedException;
 import java.util.Map;
+import za.co.jumpingbean.jpaunit.objectconstructor.ObjectConstructor;
 
 /**
  *
  * @author mark
  */
 public class Converters {
-    
-    private final Map<Class,Converter> converters = new HashMap();
-    
-    public Object convert(Class clazz,String representation) throws NoConverterDefinedException, CannotConvertException{
-        if (converters.containsKey(clazz)){
-            return converters.get(clazz).convert(representation);
-        }else{
-            throw new NoConverterDefinedException(clazz,representation);
+
+    private final Map<Class, Parser> parsers = new HashMap();
+    private final Map<Class, ObjectConstructor> constructors = new HashMap();
+
+    public Object convert(Class clazz, String representation) throws NoConverterDefinedException, CannotConvertException {
+        if (parsers.containsKey(clazz)) {
+            return parsers.get(clazz).parse(representation);
+        } else {
+            throw new NoConverterDefinedException(clazz, representation);
         }
-    }
-    
-    public void addConverter(Class clazz,Converter converter) throws ConverterAlreadyDefinedException{
-        if (converters.containsKey(clazz)){
-            throw new ConverterAlreadyDefinedException(clazz);
-        }
-        converters.put(clazz,converter);
     }
 
-    public boolean contains(Class clazz) {
-            return converters.containsKey(clazz);
+    public void addParser(Class clazz, Parser parser) throws ConverterAlreadyDefinedException {
+        if (parsers.containsKey(clazz)) {
+            throw new ConverterAlreadyDefinedException(clazz);
+        }
+        parsers.put(clazz, parser);
     }
-    
-    public Converter get(Class clazz){
-        return converters.get(clazz);
+
+    public boolean containsParser(Class clazz) {
+        return parsers.containsKey(clazz);
     }
+
+    public Parser getParser(Class clazz) {
+        return parsers.get(clazz);
+    }
+
+    public void addObjectConstructor(Class clazz, ObjectConstructor constr) {
+        if (parsers.containsKey(clazz)) {
+            throw new ConverterAlreadyDefinedException(clazz);
+        }
+        constructors.put(clazz, constr);
+    }
+
+    public boolean containsConstructor(Class clazz) {
+        return constructors.containsKey(clazz);
+    }
+
+    public ObjectConstructor getConstructor(Class clazz) {
+        return constructors.get(clazz);
+    }
+
 }

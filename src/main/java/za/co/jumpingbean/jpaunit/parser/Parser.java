@@ -15,16 +15,18 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.exception;
+package za.co.jumpingbean.jpaunit.parser;
+
+import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
+
+
 
 /**
  *
  * @author mark
- **/
-
-public class ConverterStreamException extends RuntimeException {
-
-    public ConverterStreamException(Exception ex, String error_processing_xml_file) {
-    }
-    
+ * @param <R>
+ */
+@FunctionalInterface
+public interface Parser<R> {
+     public R parse(String currentElm) throws CannotConvertException;
 }

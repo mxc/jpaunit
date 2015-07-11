@@ -17,20 +17,18 @@
  */
 package za.co.jumpingbean.jpaunit;
 
-import za.co.jumpingbean.jpaunit.converter.Converter;
-import java.lang.annotation.Annotation;
+import za.co.jumpingbean.jpaunit.parser.Parser;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -38,15 +36,20 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
+import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.persistence.EntityManager;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.PersistenceException;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
-import za.co.jumpingbean.jpaunit.exception.ConverterStreamException;
+import za.co.jumpingbean.jpaunit.exception.ParserStreamException;
+import za.co.jumpingbean.jpaunit.exception.LookupException;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.JPAParser;
+import za.co.jumpingbean.jpaunit.objectconstructor.ObjectConstructor;
 
 /**
  *
@@ -73,20 +76,36 @@ public class JpaLoader {
      * interface
      */
     static {
-        ServiceLoader<Converter> foundConverters
-                = ServiceLoader.load(Converter.class);
+        ServiceLoader<Parser> foundParsers
+                = ServiceLoader.load(Parser.class);
 
-        foundConverters.forEach(c
+        foundParsers.forEach(c
                 -> {
                     try {
-                        Method m = c.getClass().getMethod("convert", String.class);
-                        converters.addConverter(m.getReturnType(), c);
-                        Logger.getLogger((JpaLoader.class.getName())).log(Level.INFO, MessageFormat.format("Method convert found in class {0} ", c));
+                        Method m = c.getClass().getMethod("parse", String.class);
+                        converters.addParser(m.getReturnType(), c);
+                        Logger.getLogger((JpaLoader.class.getName())).log(Level.INFO, MessageFormat.format("Method parse found in class {0} ", c));
                     } catch (NoSuchMethodException | SecurityException ex) {
-                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Method convert not found in class {0} ", c), ex);
+                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Method parse not found in class {0} ", c), ex);
                     }
                 }
         );
+
+        ServiceLoader<ObjectConstructor> foundConstructors
+                = ServiceLoader.load(ObjectConstructor.class);
+
+        foundConstructors.forEach(c
+                -> {
+                    try {
+                        Method m = c.getClass().getMethod("construct", String.class);
+                        converters.addObjectConstructor(m.getReturnType(), c);
+                        Logger.getLogger((JpaLoader.class.getName())).log(Level.INFO, MessageFormat.format("Method construct found in class {0} ", c));
+                    } catch (NoSuchMethodException | SecurityException ex) {
+                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Method construct not found in class {0} ", c), ex);
+                    }
+                }
+        );
+
     }
 
     public void init(String dataSetFileName, String modelPackageName, JPAParser parser, EntityManager em) {
@@ -112,6 +131,7 @@ public class JpaLoader {
                 } else {
                     em.getTransaction().commit();
                 }
+                em.clear();
             }
         }
     }
@@ -130,11 +150,14 @@ public class JpaLoader {
         count.set(0);
         dataset.stream().forEach(entry -> {
             Class clazz = entry.getClazz();
+
+            Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO, MessageFormat.format("*** Processing {0} with id {1} ***",
+                    clazz, entry.getValue("id")));
             try {
-                Method[] methods = clazz.getMethods();
+                List<Field> fields = getAllFields(clazz);
                 Object obj = clazz.newInstance();
                 //Set object properties
-                updateObject(obj, methods, entry);
+                updateObject(obj, fields, entry);
                 try {
                     //Create linked list in datSetClasses table to
                     //prevent null pointer checks
@@ -142,7 +165,7 @@ public class JpaLoader {
                         dataSetClasses.put(clazz, new HashMap<>());
                     }
                     //try and merge the object. If data exists or someother
-                    //error catch exception. Keep original id for later lookup
+                    //error catch exception. 
                     Integer id = (Integer) obj.getClass().getMethod("getId").invoke(obj);
                     obj = this.em.merge(obj);
                     //Add dataset object to cache of dataset objects as it
@@ -170,9 +193,8 @@ public class JpaLoader {
             //Print out attributes not loaded into object. These will be unmatched
             //properties due to spelling errors or name mismatch between
             //method name and property name
-            Logger
-                    .getLogger(JpaLoader.class
-                            .getName()).log(Level.INFO, "Loaded {0} "
+            Logger.getLogger(JpaLoader.class
+                    .getName()).log(Level.INFO, "Loaded {0} "
                             + "properties for {1}", new Object[]{count.get(), clazz});
 
             if (!entry.getProperties().isEmpty()) {
@@ -183,166 +205,177 @@ public class JpaLoader {
                         .stream().forEach(c -> {
                             Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO, "{0} = {1}",
                                     new Object[]{c, entry.getValue(c)});
-                        }
-                        );
+                        });
             }
         }
         );
     }
 
-    private void updateObject(Object obj, Method[] methods, DataSetEntry entry)
+    private void updateObject(Object obj, List<Field> fields, DataSetEntry entry)
             throws IllegalAccessException, InstantiationException {
+
         //Iterate over set methods on Entity and populate entity with 
         //element attribute values if they are defined
-        Arrays.stream(methods).filter(m -> m.getParameterCount() == 1)
-                .filter(m -> Modifier.isPublic(m.getModifiers()))
-                .filter(m -> m.getName().startsWith("set"))
-                .forEach(m -> {
-                    Class parameterClass = m.getParameterTypes()[0];
+        fields.stream().forEach((Field currField) -> {
+            Class parameterClass = currField.getType();
 
-                    //Deterimine if this is a foreginObjectReference
-                    if (dataSetClasses.containsKey(parameterClass)) {
-                        //All foregin keys must end with _id and must return an Integer
-                        //We assume the variable name is the same as the method name
-                        //sans the "set" part and _id added
-                        StringBuilder propertyName = new StringBuilder(m.getName().substring(3));
-                        propertyName.append("_id");
-                        if (entry.getProperties().contains(propertyName.toString())) {
-                            try {
-                                Integer foreignId = Integer.parseInt(entry.getValue(propertyName.toString()));
-                                //Find previously created dataset object and set it on current object
-                                Object candidateObject = dataSetClasses.get(parameterClass).get(foreignId);
-                                m.invoke(obj, candidateObject);
-                                entry.removeProperty(propertyName.toString());
-                                count.incrementAndGet();
-                            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                                Logger.getLogger(JpaLoader.class
-                                        .getName()).log(Level.SEVERE,
-                                        MessageFormat.format("Error updating foreign object({0}}) in class {1}", propertyName, parameterClass), ex);
-                            }
-                        }
+            //Deterimine if this is a foreginObjectReference
+            if (dataSetClasses.containsKey(parameterClass)) {
+                //All foregin keys must end with _id and must return an Integer
+                //We assume the variable name is the same as the method name
+                //sans the "set" part and _id added
+                StringBuilder propertyName = new StringBuilder(currField.getName());
+                propertyName.append("_id");
+                if (entry.getProperties().contains(propertyName.toString())) {
+                    Integer foreignId = Integer.parseInt(entry.getValue(propertyName.toString()));
+                    //Find previously created dataset object and set it on current object
+                    Object candidateObject = dataSetClasses.get(parameterClass).get(foreignId);
+                    this.setField(currField, obj, candidateObject);
+                    entry.removeProperty(propertyName.toString());
+                    count.incrementAndGet();
+                }
 
-                    } else if (parameterClass.getDeclaredAnnotation(Embeddable.class) != null) {
-                        //Determine if this is a complex data type. i.e and
-                        //@embeddable data type that has its own properties
-                        //and values
-                        Object embeddedObj;
-                        try {
-                            embeddedObj = parameterClass.newInstance();
-                            updateObject(embeddedObj, parameterClass.getDeclaredMethods(), entry);
-                            m.invoke(obj, embeddedObj);
-                        } catch (InstantiationException | IllegalAccessException |
-                        IllegalArgumentException | InvocationTargetException ex) {
-                            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
-                                    "Reflection error while processing xml data file", ex);
-                            throw new ConverterStreamException(ex, "Reflection error while "
-                                    + "processing xml data file");
-                        }
-                    } else if (parameterClass.isEnum()) {
-                        //If this is an enum the set enum
-                        try {
-                            String property = m.getName().substring(3);
-                            Object enumVal;
-                            StringBuilder str = new StringBuilder(property);
-                            str.setCharAt(1,Character.toUpperCase(str.charAt(0)));
-                            Field field = obj.getClass().getField(str.toString());
-                            Enumerated enumerated = field.getAnnotation(Enumerated.class);
-                            if (enumerated.value() == EnumType.STRING) {
-                                enumVal = Enum.valueOf(parameterClass, entry.getValue(property));
-                            } else {
-                                enumVal = parameterClass.getEnumConstants()[Integer.parseInt(entry.getValue(property))];
-                            }
-                            m.invoke(obj, enumVal);
-                            entry.removeProperty(property);
-                        } catch (IllegalAccessException | IllegalArgumentException |
-                                InvocationTargetException | NoSuchFieldException | 
-                                SecurityException  ex) {
-                            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, 
-                                    MessageFormat.format("Error converting enum type {0}",parameterClass), ex);
-                        }
-                    } else {
-                        if (parameterClass.isPrimitive()) {
-                            //Determine if this is a primitiive type
-                            String primitiveType = parameterClass.getTypeName();
-                            switch (primitiveType) {
-                                case "int":
-                                    parameterClass = Integer.class;
-                                    break;
-                                case "char":
-                                    parameterClass = Character.class;
-                                    break;
-                                case "long":
-                                    parameterClass = Long.class;
-                                    break;
-                                case "float":
-                                    parameterClass = Float.class;
-                                    break;
-                                case "double":
-                                    parameterClass = Double.class;
-                                    break;
-                                case "boolean":
-                                    parameterClass = Boolean.class;
-                                    break;
-                            }
-                        }
-                        //If it is a  simple data type set the properties
-                        //remove set from function name to obtain property name
-                        String property = m.getName().substring(3);
-                        //int index = entry.getIndexOfPropert(property);
-                        if (!property.isEmpty()) {
-                            if (converters.contains(parameterClass) && entry.getProperties().contains(property)) {
-                                try {
-                                    Object result = converters.get(parameterClass)
-                                    .convert(entry.getValue(property));
-                                    try {
-                                        m.invoke(obj, result);
-                                        count.incrementAndGet();
-                                    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, "Reflection error while processing xml data file", ex);
-                                        throw new ConverterStreamException(ex, "Reflection error while processing xml data file");
-                                    }
-                                } catch (CannotConvertException ex) {
-                                    Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
-                                            MessageFormat.format("Error converting {0} with value {1}", property, entry.getValue(property)), ex);
-                                };
-                                //Removed used properties from list.
-                                //Any remaining properties after load will
-                                //be properties that were not matched.
-                                entry.removeProperty(property);
-                            }
-
+            } else if (parameterClass.getDeclaredAnnotation(Embeddable.class) != null) {
+                //Determine if this is a complex data type. i.e and
+                //@embeddable data type that has its own properties
+                //and values
+                Object embeddedObj;
+                try {
+                    embeddedObj = parameterClass.newInstance();
+                    updateObject(embeddedObj, getAllFields(parameterClass), entry);
+                    this.setField(currField, obj, embeddedObj);
+                } catch (InstantiationException | IllegalAccessException ex) {
+                    Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
+                            "Reflection error while processing xml data file", ex);
+                    throw new ParserStreamException(ex, "Reflection error while "
+                            + "processing xml data file");
+                }
+            } else if (parameterClass.isEnum()) {
+                //If this is an enum the set enum
+                try {
+                    String property = currField.getName();
+                    Object enumVal = null;
+                    if (entry.getValue(property) != null) {
+                        Field field = obj.getClass().getDeclaredField(property);
+                        Enumerated enumerated = field.getAnnotation(Enumerated.class);
+                        if (enumerated != null && enumerated.value() == EnumType.STRING) {
+                            enumVal = Enum.valueOf(parameterClass, entry.getValue(property));
                         } else {
-                            Logger.getLogger(JpaLoader.class.getName()).log(Level.WARNING, "No converter found for {0}", parameterClass);
+                            enumVal = parameterClass.getEnumConstants()[Integer.parseInt(entry.getValue(property))];
                         }
                     }
+                    if (enumVal != null) {
+                        this.setField(currField, obj, enumVal);
+                        entry.removeProperty(property);
+                    } else {
+                        Logger.getLogger(JpaLoader.class.getName()).log(Level.WARNING, "Enum lookup failed for {0}", parameterClass);
+                    }
+                } catch (NoSuchFieldException | SecurityException ex) {
+                    Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
+                            MessageFormat.format("Error converting enum type {0}", parameterClass), ex);
+                }
+            } else {
+                if (parameterClass.isPrimitive()) {
+                    //Determine if this is a primitiive type
+                    String primitiveType = parameterClass.getTypeName();
+                    switch (primitiveType) {
+                        case "int":
+                            parameterClass = Integer.class;
+                            break;
+                        case "char":
+                            parameterClass = Character.class;
+                            break;
+                        case "long":
+                            parameterClass = Long.class;
+                            break;
+                        case "float":
+                            parameterClass = Float.class;
+                            break;
+                        case "double":
+                            parameterClass = Double.class;
+                            break;
+                        case "boolean":
+                            parameterClass = Boolean.class;
+                            break;
+                    }
+                }
+                //If it is a  simple data type set the properties
+                //remove set from function name to obtain property name
+                String name = currField.getName();
+                if (converters.containsParser(parameterClass) && entry.getProperties().contains(currField.getName())) {
+                    try {
+                        Object result = converters.getParser(parameterClass)
+                                .parse(entry.getValue(currField.getName()));
+                        this.setField(currField, obj, result);
+                    } catch (CannotConvertException ex) {
+                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
+                                MessageFormat.format("Error converting {0} with value {1}", 
+                                        currField.getName(), entry.getValue(currField.getName())), ex);
+                    };
+                        //Removed used properties from list.
+                    //Any remaining properties after load will
+                    //be properties that were not matched.
+                    entry.removeProperty(currField.getName());
+                }
 
-                });
+            }
+
+        });
+    }
+
+//    private String setMethodNameToProperty(Method m) {
+//        StringBuilder str = new StringBuilder(m.getName());
+//        str.delete(0, 3);
+//        Character char1 = Character.toLowerCase(str.charAt(0));
+//        str.deleteCharAt(0);
+//        str.insert(0, char1);
+//        return str.toString();
+//    }
+    private void setField(Field field, Object object, Object value) {
+        try {
+            field.setAccessible(true);
+            field.set(object, value);
+            field.setAccessible(false);
+        } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Reflection error "
+                    + "while setting field {0} to value {1}", field, value), ex);
+            throw new ParserStreamException(ex, "Reflection error while processing xml data file");
+        }
     }
 
     public void delete() {
-        boolean active = true;
-        if (!em.getTransaction().isActive()) {
-            active = false;
-        }
         try {
-            if (!active) {
-                em.getTransaction().begin();
+            boolean active = true;
+
+            if (!em.getTransaction().isActive()) {
+                active = false;
             }
-            em.clear();
-            Set<Class> set = dataSetClasses.keySet();
-            Iterator<Class> itr = set.iterator();
-            if (itr.hasNext()) {
-                delete(itr.next(), itr);
-            }
-            dataSetClasses.clear();
-        } finally {
-            if (!active) {
-                if (em.getTransaction().getRollbackOnly()) {
-                    em.getTransaction().rollback();
-                } else {
-                    em.getTransaction().commit();
+            try {
+                em.clear();
+                if (!active) {
+                    em.getTransaction().begin();
+                }
+                Set<Class> set = dataSetClasses.keySet();
+                Iterator<Class> itr = set.iterator();
+                if (itr.hasNext()) {
+                    delete(itr.next(), itr);
+                }
+                dataSetClasses.clear();
+            } finally {
+                if (!active) {
+                    if (em.getTransaction().getRollbackOnly()) {
+                        em.getTransaction().rollback();
+                    } else {
+                        em.getTransaction().commit();
+                    }
                 }
             }
+        } catch (PersistenceException ex) {
+            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
+                    "Cleaning database of inserted dataset records failed. "
+                    + "Subsequent tests may fail. It is likely your "
+                    + "test inserted a record. "
+                    + "Please delete manually at end of test", ex);
         }
     }
 
@@ -354,14 +387,41 @@ public class JpaLoader {
         map.entrySet().forEach(c -> {
             try {
                 Integer id = (Integer) c.getValue().getClass().getMethod("getId").invoke(c.getValue());
-                Object obj2 = em.find(clazz, id);
                 if (em.find(clazz, id) != null) {
-                    Object obj = em.merge(c.getValue());
-                    em.remove(obj);
+                    Object obj2 = em.find(clazz, id);
+                    em.remove(obj2);
                 }
             } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                 Logger.getLogger(JpaLoader.class.getName()).log(Level.WARNING, "Error deleting object from dataset", ex);
             }
         });
     }
+
+    public <E> E lookupEntity(E reference) throws LookupException {
+        try {
+            Class c = reference.getClass();
+            Integer id = (Integer) c.getMethod("getId").invoke(reference);
+            return (E) dataSetClasses.get(c).get(id);
+        } catch (NoSuchMethodException ex) {
+            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("No method "
+                    + "getId for class {0}", reference.getClass()), ex);
+            return reference;
+        } catch (IllegalAccessException | IllegalArgumentException |
+                InvocationTargetException | SecurityException ex) {
+            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, "Error looking up "
+                    + "reference object in dataset", ex);
+            throw new LookupException("Error looking up reference entity in dataset", ex);
+        }
+    }
+
+    private List<Field> getAllFields(Class clazz) {
+        List<Field> fields = new LinkedList<>();
+        Class currentClass = clazz;
+        while (currentClass != Object.class) {
+            fields.addAll(Arrays.asList(currentClass.getDeclaredFields()));
+            currentClass = currentClass.getSuperclass();
+        }
+        return fields;
+    }
+
 }

@@ -15,22 +15,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.converter;
+package za.co.jumpingbean.jpaunit.parser;
 
+import java.math.BigDecimal;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 
 /**
  *
  * @author mark
  */
-public class IntegerConverter implements Converter<Integer> {
+public class BigDecimalParser implements Parser<BigDecimal> {
 
     @Override
-    public Integer convert(String elm) throws CannotConvertException {
-        try{
-        return Integer.parseInt(elm);
-        } catch(NumberFormatException ex){
-            throw new CannotConvertException(Integer.class, elm);
+    public BigDecimal parse(String elm) throws CannotConvertException {
+        try{    
+        return new BigDecimal(elm);
+        } catch (NumberFormatException ex){
+            throw new CannotConvertException(BigDecimal.class, elm);
         }
     }
     

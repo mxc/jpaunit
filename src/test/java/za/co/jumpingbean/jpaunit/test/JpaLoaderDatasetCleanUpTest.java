@@ -29,6 +29,7 @@ import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
 import za.co.jumpingbean.jpaunit.test.model.ForeignEntity;
+import za.co.jumpingbean.jpaunit.test.model.SimpleStringEntity;
 
 /**
  *
@@ -56,13 +57,43 @@ public class JpaLoaderDatasetCleanUpTest {
         qry.setMaxResults(1);
         ForeignEntity ent = (ForeignEntity) qry.getSingleResult();
         id = ent.getId();
-        Assert.assertNotNull("Expected object to be null", ent);
+        Assert.assertNotNull("Expected object to be not be null", ent);
         em.getTransaction().commit();
         loader.delete();
         em.getTransaction().begin();
         ent = em.find(ForeignEntity.class, id);
-        Assert.assertNull(ent);
+        Assert.assertNull("Expected database to be empty on dataset detel",ent);
         em.getTransaction().commit();
     }
 
+    @Test
+    public void dataSetCleanUpTestWithElementCreatedDuringTest() throws ParserException {
+        JpaLoader loader = new JpaLoader();
+        loader.init("META-INF/simplestringentity.xml", modelPackageName, new SaxHandler(), em);
+        loader.load();
+        Integer id;
+        em.clear();
+        em.getTransaction().begin();
+        Query qry = em.createQuery("Select c from SimpleStringEntity c");
+        qry.setMaxResults(1);
+        SimpleStringEntity ent = (SimpleStringEntity) qry.getSingleResult();
+        id = ent.getId();
+        Assert.assertNotNull("Expected object to be null", ent);
+        SimpleStringEntity simpleStringEntity = new SimpleStringEntity();
+        simpleStringEntity.setStringValue("Should not be delted by clean up!");
+        em.persist(simpleStringEntity);
+        em.getTransaction().commit();
+        loader.delete();
+        em.getTransaction().begin();
+        simpleStringEntity = em.find(SimpleStringEntity.class, simpleStringEntity.getId());
+        Assert.assertNotNull("Data inserted during test will not be removed by "
+                + "dataset cleanup. User must handle removal.",simpleStringEntity);
+        em.getTransaction().commit();
+        //clean up
+        em.getTransaction().begin();
+        simpleStringEntity = em.merge(simpleStringEntity);
+        em.remove(simpleStringEntity);
+        em.getTransaction().commit();
+    }    
+    
 }

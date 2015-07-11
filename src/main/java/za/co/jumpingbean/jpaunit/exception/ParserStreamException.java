@@ -15,32 +15,18 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.converter;
-
-import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
+package za.co.jumpingbean.jpaunit.exception;
 
 /**
  *
  * @author mark
- */
-public class BooleanConverter implements Converter<Boolean> {
+ **/
 
-    @Override
-    public Boolean convert(String elm) throws CannotConvertException {
-        switch (elm) {
-            case "1":
-                elm = "true";
-                break;
-            case "0":
-                elm = "false";
-                break;
-            case "false":
-            case "true":
-                break;
-            default:
-                throw  new CannotConvertException(Boolean.class, elm);
-        }
-        return  elm.equals("true")? Boolean.TRUE: Boolean.FALSE;
+public class ParserStreamException extends RuntimeException {
+
+    public ParserStreamException(Throwable ex, String msg) {
+        super(msg);
+        this.addSuppressed(ex);
     }
-
+    
 }
