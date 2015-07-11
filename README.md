@@ -57,7 +57,9 @@ xml file.
     <SimpleStringEntity id="3" stringValue="test3" />
 </dataset>`
 
-In your unit test:
+In your unit test call JpaUnit's init method providing it with your dataset file on
+the ClassPath, a string for where your Entity classes,or models can be found, and
+a parser. Currently we only have a parser for the DBUnit dataset xml files.
 `
     private static EntityManager em;
     private final String modelPackageName = "za.co.jumpingbean.jpaunit.test.model";
@@ -91,7 +93,7 @@ See unit test for more.
 
 My Java applications make use of JPA. When it comes to writing unit tests the
 choice has been  [Arquillian] (http://arquillian.org/) or DBUnit
-(http://www.dbunit.org/). Both of these require some time to master and always
+(http://dbunit.sourceforge.net/). Both of these require some time to master and always
 require time to configure for your unit tests.
 
 Arquillian is an acknowledgement that writing unit test for JEE application can't
