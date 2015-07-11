@@ -92,7 +92,7 @@ See unit test for more.
 ##Why JPAUnit?
 
 My Java applications make use of JPA. When it comes to writing unit tests the
-choice has been  [Arquillian] (http://arquillian.org/) or DBUnit
+choice has been  [Arquillian] (http://arquillian.org/) or [DBUnit]
 (http://dbunit.sourceforge.net/). Both of these require some time to master and always
 require time to configure for your unit tests.
 
