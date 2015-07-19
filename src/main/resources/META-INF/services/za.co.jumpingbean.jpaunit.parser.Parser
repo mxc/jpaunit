@@ -1,6 +1,0 @@
-za.co.jumpingbean.jpaunit.parser.BigDecimalParser
-za.co.jumpingbean.jpaunit.parser.BooleanParser
-za.co.jumpingbean.jpaunit.parser.DateParser
-za.co.jumpingbean.jpaunit.parser.IntegerParser
-za.co.jumpingbean.jpaunit.parser.StringParser
-za.co.jumpingbean.jpaunit.parser.LocalDateParser

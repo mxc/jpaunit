@@ -19,6 +19,8 @@ package za.co.jumpingbean.jpaunit.test.model;
 
 import java.time.LocalDate;
 import javax.persistence.Embeddable;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 
 /**
  *
@@ -26,12 +28,22 @@ import javax.persistence.Embeddable;
  */
 
 @Embeddable
-public class EmbeddableEnity {
+public class EmbeddableEnity  {
     
     private String stringValue;
     private Integer intValue;
     private LocalDate localDateValue;
+    @ManyToOne
+    protected SimpleLongEntity simpleLongEntity;
 
+    public void setSimpleLongEntity(SimpleLongEntity simpleStringEntity){
+        this.simpleLongEntity = simpleStringEntity;
+    }
+    
+    public SimpleLongEntity getSimpleLongEntity(){
+        return  simpleLongEntity;
+    }
+    
     public String getStringValue() {
         return stringValue;
     }
@@ -55,7 +67,5 @@ public class EmbeddableEnity {
     public void setLocalDateValue(LocalDate localDateValue) {
         this.localDateValue = localDateValue;
     }
-    
-    
     
 }

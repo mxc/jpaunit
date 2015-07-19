@@ -15,32 +15,44 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.parser;
+package za.co.jumpingbean.jpaunit.test.model;
 
-import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 
 /**
  *
  * @author mark
  */
-public class BooleanParser implements Parser<Boolean> {
+@Entity
+public class SimpleByteEntity {
 
-    @Override
-    public Boolean parse(String elm) throws CannotConvertException {
-        switch (elm) {
-            case "1":
-                elm = "true";
-                break;
-            case "0":
-                elm = "false";
-                break;
-            case "false":
-            case "true":
-                break;
-            default:
-                throw  new CannotConvertException(Boolean.class, elm);
-        }
-        return  elm.equals("true")? Boolean.TRUE: Boolean.FALSE;
+    @Id
+    @GeneratedValue(strategy = GenerationType.TABLE)
+    @Column(name = "id")
+    private int id;
+    
+    private Byte byteValue;
+    
+    public Byte getByteValue() {
+        return byteValue;
     }
 
+    public void setByteValue(Byte byteValue) {
+        this.byteValue = byteValue;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    
+    
 }

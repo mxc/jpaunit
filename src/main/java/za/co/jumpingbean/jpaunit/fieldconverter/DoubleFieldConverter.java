@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.parser;
+package za.co.jumpingbean.jpaunit.fieldconverter;
 
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 
@@ -23,15 +23,15 @@ import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
  *
  * @author mark
  */
-public class IntegerParser implements Parser<Integer> {
+public class DoubleFieldConverter implements FieldConverter<Double> {
 
     @Override
-    public Integer parse(String elm) throws CannotConvertException {
-        try{
-        return Integer.parseInt(elm);
-        } catch(NumberFormatException ex){
-            throw new CannotConvertException(Integer.class, elm);
-        }
+    public Double parse(String currentElm) throws CannotConvertException {
+         try {
+             return Double.parseDouble(currentElm);
+         }catch(NumberFormatException ex){
+             throw new CannotConvertException(Double.class,currentElm);
+         }
     }
     
 }

@@ -15,15 +15,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.objectconstructor;
+package za.co.jumpingbean.jpaunit.fieldconverter;
 
-import za.co.jumpingbean.jpaunit.DataSetEntry;
+
+import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 
 /**
  *
  * @author mark
  */
-@FunctionalInterface
-public interface ObjectConstructor {
-    public <E> E construct (DataSetEntry entry);
+public class LongFieldConverter implements FieldConverter<Long> {
+
+    @Override
+    public Long parse(String currentElm) throws CannotConvertException {
+        try{
+            return Long.parseLong(currentElm);
+        }catch(NumberFormatException ex){
+            throw new CannotConvertException(Long.class, currentElm);
+        }
+    }
+    
 }

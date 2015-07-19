@@ -15,25 +15,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.parser;
+package za.co.jumpingbean.jpaunit.fieldconverter;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 
 /**
  *
  * @author mark
  */
-public class StringParser implements Parser<String>{
+public class LocalDateFieldConverter implements FieldConverter<LocalDate> {
 
-    /**
-     *
-     * @param elm
-     * @return
-     * @throws CannotConvertException
-     */
     @Override
-    public String parse(String elm) throws CannotConvertException {
-        return elm;
+    public LocalDate parse(String elm) throws CannotConvertException {
+           try{
+               return LocalDate.parse(elm);
+           }catch(DateTimeParseException ex){
+               throw new CannotConvertException(LocalDate.class, elm);
+           }
     }
     
 }

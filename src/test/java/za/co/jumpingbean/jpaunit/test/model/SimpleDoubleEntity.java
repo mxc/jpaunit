@@ -17,67 +17,40 @@
  */
 package za.co.jumpingbean.jpaunit.test.model;
 
-import javax.persistence.AssociationOverride;
-import javax.persistence.AssociationOverrides;
 import javax.persistence.Column;
-import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
 
 /**
  *
  * @author mark
  */
 @Entity
-public class EntityWithEmbeddedValue {
+public class SimpleDoubleEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.TABLE)
     @Column(name = "id")
-    private Integer id;
+    private int id;
 
-    private String stringValue1;
-    private Boolean booleanValue;
+    private Double doubleValue;
 
-    @Embedded
-    @AssociationOverrides({
-        @AssociationOverride(name = "simpleLongEntity", joinColumns = @JoinColumn(name = "simpleLongEntity_id"))
-    })
-    private EmbeddableEnity embeddableEntity;
-
-    public Integer getId() {
+    public int getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(int id) {
         this.id = id;
     }
 
-    public String getStringValue1() {
-        return stringValue1;
+    public Double getDoubleValue() {
+        return doubleValue;
     }
 
-    public void setStringValue1(String stringValue1) {
-        this.stringValue1 = stringValue1;
-    }
-
-    public Boolean getBooleanValue() {
-        return booleanValue;
-    }
-
-    public void setBooleanValue(Boolean booleanValue) {
-        this.booleanValue = booleanValue;
-    }
-
-    public EmbeddableEnity getEmbeddableEntity() {
-        return embeddableEntity;
-    }
-
-    public void setEmbeddableEntity(EmbeddableEnity embeddableEntity) {
-        this.embeddableEntity = embeddableEntity;
+    public void setDoubleValue(Double doubleValue) {
+        this.doubleValue = doubleValue;
     }
 
 }

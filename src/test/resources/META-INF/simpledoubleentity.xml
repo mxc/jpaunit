@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleDoubleEntity id="1" doubleValue="100.32" />
+    <SimpleDoubleEntity id="2" doubleValue="0.2" />
+    <SimpleDoubleEntity id="3" doubleValue="92233720368547758086786785689789765867867868657856865868658568686867585.5645656456463353434" />
+</dataset>

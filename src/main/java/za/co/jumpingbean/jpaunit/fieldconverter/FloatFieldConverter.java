@@ -15,15 +15,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.objectconstructor;
+package za.co.jumpingbean.jpaunit.fieldconverter;
 
-import za.co.jumpingbean.jpaunit.DataSetEntry;
+import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 
 /**
  *
  * @author mark
  */
-@FunctionalInterface
-public interface ObjectConstructor {
-    public <E> E construct (DataSetEntry entry);
+public class FloatFieldConverter implements FieldConverter<Float> {
+
+    @Override
+    public Float parse(String currentElm) throws CannotConvertException {
+        try{
+            return Float.parseFloat(currentElm);
+        }catch (NumberFormatException ex){
+            throw new CannotConvertException(Float.class,currentElm);
+        }
+    }
+    
 }

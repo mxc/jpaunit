@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleLongEntity id="1" longValue="1" />
+    <SimpleLongEntity id="2" longValue="-20000000000000" />
+    <SimpleLongEntity id="3" longValue="9223372036854775808" />
+</dataset>

@@ -27,13 +27,14 @@ import org.junit.Test;
 import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
-import za.co.jumpingbean.jpaunit.test.model.EntityWithEmbeddedValue;
+import za.co.jumpingbean.jpaunit.test.model.EntityAssocAttribOverride;
+
 
 /**
  *
  * @author mark
  */
-public class JpaLoaderEmbeddedEntityTest {
+public class JpaLoaderEntityAssocAttributeOverrideTest {
 
     private static EntityManager em;
     private final String modelPackageName = "za.co.jumpingbean.jpaunit.test.model";
@@ -44,24 +45,26 @@ public class JpaLoaderEmbeddedEntityTest {
     }
 
     @Test
-    public void embeddedTest() throws ParserException {
+    public void overrideTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/entitywithembeddedvalueentity.xml", modelPackageName,
+        loader.init("META-INF/entitywithoverrides.xml", modelPackageName,
                 new SaxHandler(), em);
         loader.load();
         em.clear();
         em.getTransaction().begin();
         try {
-            Query tmpq = em.createQuery("Select s from EntityWithEmbeddedValue s");
-            List<EntityWithEmbeddedValue> list = tmpq.getResultList();
-            Assert.assertEquals("Should have found 3 entties",4,list.size());
-            Query qry = em.createQuery("Select c from EntityWithEmbeddedValue c"
-                    + " where c.embeddableEntity.stringValue like ?");
-            qry.setParameter(1,"String Value 2-3");
-            EntityWithEmbeddedValue ent = (EntityWithEmbeddedValue) qry.getSingleResult();
+            Query tmpq = em.createQuery("Select s from EntityAssocAttribOverride s");
+            List<EntityAssocAttribOverride> list = tmpq.getResultList();
+            Assert.assertEquals(2,list.size());
+            Query qry = em.createQuery("Select c from EntityAssocAttribOverride c "
+                    + "where c.embeddableEntity2.stringValue like ?");
+            qry.setParameter(1,"new string");
+            EntityAssocAttribOverride ent = (EntityAssocAttribOverride) qry.getSingleResult();
             Assert.assertNotNull("Should have found entity", ent);
-            Assert.assertEquals("Failed to retrieve correct stringValue", 
-                    new Integer(130), ent.getEmbeddableEntity().getIntValue());
+            Assert.assertEquals(new Integer(10),ent.getEmbeddableEntity().getIntValue());
+            Assert.assertEquals(new Integer(20),ent.getEmbeddableEntity2().getIntValue());
+            Assert.assertEquals("string val4",ent.getStringValue4());
+            Assert.assertEquals("test",ent.getStringEntity4().getStringValue());
         } finally {
             em.getTransaction().commit();
             loader.delete();

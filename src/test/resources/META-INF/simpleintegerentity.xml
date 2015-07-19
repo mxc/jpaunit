@@ -2,5 +2,5 @@
 <dataset>
     <SimpleIntegerEntity id="1" integerValue="1" />
     <SimpleIntegerEntity id="2" integerValue="-200" />
-    <SimpleIntegerEntity id="3" integerValue="1212" />
+    <SimpleIntegerEntity id="3" integerValue="-2147483649" />
 </dataset>

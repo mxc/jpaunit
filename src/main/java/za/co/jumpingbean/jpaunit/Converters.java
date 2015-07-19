@@ -17,7 +17,7 @@
  */
 package za.co.jumpingbean.jpaunit;
 
-import za.co.jumpingbean.jpaunit.parser.Parser;
+import za.co.jumpingbean.jpaunit.fieldconverter.FieldConverter;
 import java.util.HashMap;
 import za.co.jumpingbean.jpaunit.exception.ConverterAlreadyDefinedException;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
@@ -31,7 +31,7 @@ import za.co.jumpingbean.jpaunit.objectconstructor.ObjectConstructor;
  */
 public class Converters {
 
-    private final Map<Class, Parser> parsers = new HashMap();
+    private final Map<Class, FieldConverter> parsers = new HashMap();
     private final Map<Class, ObjectConstructor> constructors = new HashMap();
 
     public Object convert(Class clazz, String representation) throws NoConverterDefinedException, CannotConvertException {
@@ -42,7 +42,7 @@ public class Converters {
         }
     }
 
-    public void addParser(Class clazz, Parser parser) throws ConverterAlreadyDefinedException {
+    public void addParser(Class clazz, FieldConverter parser) throws ConverterAlreadyDefinedException {
         if (parsers.containsKey(clazz)) {
             throw new ConverterAlreadyDefinedException(clazz);
         }
@@ -53,7 +53,7 @@ public class Converters {
         return parsers.containsKey(clazz);
     }
 
-    public Parser getParser(Class clazz) {
+    public FieldConverter getParser(Class clazz) {
         return parsers.get(clazz);
     }
 

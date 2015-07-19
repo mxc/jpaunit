@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleByteEntity id="1" byteValue="1" />
+    <SimpleByteEntity id="2" byteValue="-50" />
+    <SimpleByteEntity id="3" byteValue="129" />
+</dataset>

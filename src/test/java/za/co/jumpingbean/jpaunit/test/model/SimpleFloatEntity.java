@@ -15,25 +15,42 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.parser;
+package za.co.jumpingbean.jpaunit.test.model;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 
 /**
  *
  * @author mark
  */
-public class LocalDateParser implements Parser<LocalDate> {
+@Entity
+public class SimpleFloatEntity {
 
-    @Override
-    public LocalDate parse(String elm) throws CannotConvertException {
-           try{
-               return LocalDate.parse(elm);
-           }catch(DateTimeParseException ex){
-               throw new CannotConvertException(LocalDate.class, elm);
-           }
+    @Id
+    @GeneratedValue(strategy = GenerationType.TABLE)
+    @Column(name = "id")
+    private int id;
+
+    private Float floatValue;
+
+    public int getId() {
+        return id;
     }
-    
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public Float getFloatValue() {
+        return floatValue;
+    }
+
+    public void setFloatValue(Float doubleValue) {
+        this.floatValue = doubleValue;
+    }
+
 }

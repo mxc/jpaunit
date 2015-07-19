@@ -17,18 +17,15 @@
  */
 package za.co.jumpingbean.jpaunit;
 
-import za.co.jumpingbean.jpaunit.parser.Parser;
+import za.co.jumpingbean.jpaunit.fieldconverter.FieldConverter;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -36,15 +33,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.persistence.AttributeOverride;
-import javax.persistence.AttributeOverrides;
-import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.persistence.EntityManager;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.PersistenceException;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
+import za.co.jumpingbean.jpaunit.exception.ConnectionException;
 import za.co.jumpingbean.jpaunit.exception.ParserStreamException;
 import za.co.jumpingbean.jpaunit.exception.LookupException;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
@@ -76,8 +71,8 @@ public class JpaLoader {
      * interface
      */
     static {
-        ServiceLoader<Parser> foundParsers
-                = ServiceLoader.load(Parser.class);
+        ServiceLoader<FieldConverter> foundParsers
+                = ServiceLoader.load(FieldConverter.class);
 
         foundParsers.forEach(c
                 -> {
@@ -113,7 +108,26 @@ public class JpaLoader {
         this.dataSetFileName = dataSetFileName;
         this.em = em;
         this.parser = parser;
-        //this.loadConverters();
+        Thread.currentThread().setUncaughtExceptionHandler((Thread thread, Throwable thrwbl) -> {
+            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, "Exception thrown in test!. Cleaning database");
+            if (em.isOpen()) {
+                this.delete();
+            }
+        });
+    }
+
+    /**
+     * Utility method to change the loader's entity manager.
+     *
+     * @param em
+     * @throws ConnectionException
+     */
+    public void setEntityManager(EntityManager em) throws ConnectionException {
+        if (em != null && em.isOpen()) {
+            throw new ConnectionException("Current entity manager is still open.", null);
+        } else {
+            this.em = em;
+        }
     }
 
     public void load() throws ParserException {
@@ -129,7 +143,18 @@ public class JpaLoader {
                 if (em.getTransaction().getRollbackOnly()) {
                     em.getTransaction().rollback();
                 } else {
-                    em.getTransaction().commit();
+                    try {
+                        em.getTransaction().commit();
+
+                    } catch (PersistenceException ex) {
+                        Logger.getLogger(JpaLoader.class
+                                .getName()).log(Level.SEVERE,
+                                        "**** Error committing load for test. Closing connection ...", ex);
+                        if(em.isOpen()){
+                            em.close();
+                        }
+                        throw ex;
+                    }
                 }
                 em.clear();
             }
@@ -151,10 +176,13 @@ public class JpaLoader {
         dataset.stream().forEach(entry -> {
             Class clazz = entry.getClazz();
 
-            Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO, MessageFormat.format("*** Processing {0} with id {1} ***",
-                    clazz, entry.getValue("id")));
+            Logger
+                    .getLogger(JpaLoader.class
+                            .getName()).log(Level.INFO, MessageFormat.format("*** Processing {0} with id {1} ***",
+                                    clazz, entry.getValue("id")));
+
             try {
-                List<Field> fields = getAllFields(clazz);
+                List<Field> fields = Utility.getAllFields(clazz);
                 Object obj = clazz.newInstance();
                 //Set object properties
                 updateObject(obj, fields, entry);
@@ -197,7 +225,8 @@ public class JpaLoader {
                     .getName()).log(Level.INFO, "Loaded {0} "
                             + "properties for {1}", new Object[]{count.get(), clazz});
 
-            if (!entry.getProperties().isEmpty()) {
+            if (!entry.getProperties()
+                    .isEmpty()) {
                 Logger.getLogger(JpaLoader.class
                         .getName()).log(Level.INFO, "{0} has "
                                 + "the following unmatched attributes", clazz);
@@ -233,16 +262,19 @@ public class JpaLoader {
                     this.setField(currField, obj, candidateObject);
                     entry.removeProperty(propertyName.toString());
                     count.incrementAndGet();
+
                 }
 
-            } else if (parameterClass.getDeclaredAnnotation(Embeddable.class) != null) {
+            } else if (parameterClass.getDeclaredAnnotation(Embeddable.class
+            ) != null) {
                 //Determine if this is a complex data type. i.e and
                 //@embeddable data type that has its own properties
                 //and values
                 Object embeddedObj;
+
                 try {
                     embeddedObj = parameterClass.newInstance();
-                    updateObject(embeddedObj, getAllFields(parameterClass), entry);
+                    updateObject(embeddedObj, Utility.getAllFields(parameterClass), entry);
                     this.setField(currField, obj, embeddedObj);
                 } catch (InstantiationException | IllegalAccessException ex) {
                     Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
@@ -257,8 +289,11 @@ public class JpaLoader {
                     Object enumVal = null;
                     if (entry.getValue(property) != null) {
                         Field field = obj.getClass().getDeclaredField(property);
-                        Enumerated enumerated = field.getAnnotation(Enumerated.class);
-                        if (enumerated != null && enumerated.value() == EnumType.STRING) {
+                        Enumerated enumerated = field.getAnnotation(Enumerated.class
+                        );
+                        if (enumerated
+                                != null && enumerated.value()
+                                == EnumType.STRING) {
                             enumVal = Enum.valueOf(parameterClass, entry.getValue(property));
                         } else {
                             enumVal = parameterClass.getEnumConstants()[Integer.parseInt(entry.getValue(property))];
@@ -267,17 +302,22 @@ public class JpaLoader {
                     if (enumVal != null) {
                         this.setField(currField, obj, enumVal);
                         entry.removeProperty(property);
+
                     } else {
-                        Logger.getLogger(JpaLoader.class.getName()).log(Level.WARNING, "Enum lookup failed for {0}", parameterClass);
+                        Logger.getLogger(JpaLoader.class
+                                .getName()).log(Level.WARNING, "Enum lookup failed for {0}", parameterClass);
                     }
+
                 } catch (NoSuchFieldException | SecurityException ex) {
-                    Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
-                            MessageFormat.format("Error converting enum type {0}", parameterClass), ex);
+                    Logger.getLogger(JpaLoader.class
+                            .getName()).log(Level.SEVERE,
+                                    MessageFormat.format("Error converting enum type {0}", parameterClass), ex);
                 }
             } else {
                 if (parameterClass.isPrimitive()) {
                     //Determine if this is a primitiive type
                     String primitiveType = parameterClass.getTypeName();
+
                     switch (primitiveType) {
                         case "int":
                             parameterClass = Integer.class;
@@ -296,23 +336,26 @@ public class JpaLoader {
                             break;
                         case "boolean":
                             parameterClass = Boolean.class;
+
                             break;
                     }
                 }
                 //If it is a  simple data type set the properties
                 //remove set from function name to obtain property name
-                String name = currField.getName();
+                //String name = currField.getName();
                 if (converters.containsParser(parameterClass) && entry.getProperties().contains(currField.getName())) {
                     try {
                         Object result = converters.getParser(parameterClass)
                                 .parse(entry.getValue(currField.getName()));
                         this.setField(currField, obj, result);
+
                     } catch (CannotConvertException ex) {
-                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
-                                MessageFormat.format("Error converting {0} with value {1}", 
-                                        currField.getName(), entry.getValue(currField.getName())), ex);
-                    };
-                        //Removed used properties from list.
+                        Logger.getLogger(JpaLoader.class
+                                .getName()).log(Level.SEVERE,
+                                        MessageFormat.format("Error converting {0} with value {1}",
+                                                currField.getName(), entry.getValue(currField.getName())), ex);
+                    }
+                    //Removed used properties from list.
                     //Any remaining properties after load will
                     //be properties that were not matched.
                     entry.removeProperty(currField.getName());
@@ -323,23 +366,19 @@ public class JpaLoader {
         });
     }
 
-//    private String setMethodNameToProperty(Method m) {
-//        StringBuilder str = new StringBuilder(m.getName());
-//        str.delete(0, 3);
-//        Character char1 = Character.toLowerCase(str.charAt(0));
-//        str.deleteCharAt(0);
-//        str.insert(0, char1);
-//        return str.toString();
-//    }
+
     private void setField(Field field, Object object, Object value) {
         try {
             field.setAccessible(true);
             field.set(object, value);
             field.setAccessible(false);
+
         } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Reflection error "
-                    + "while setting field {0} to value {1}", field, value), ex);
-            throw new ParserStreamException(ex, "Reflection error while processing xml data file");
+            Logger.getLogger(JpaLoader.class
+                    .getName()).log(Level.SEVERE, MessageFormat.format("Reflection error "
+                                    + "while setting field {0} to value {1}", field, value), ex);
+            throw new ParserStreamException(ex,
+                    "Reflection error while processing xml data file");
         }
     }
 
@@ -367,15 +406,17 @@ public class JpaLoader {
                         em.getTransaction().rollback();
                     } else {
                         em.getTransaction().commit();
+
                     }
                 }
             }
         } catch (PersistenceException ex) {
-            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
-                    "Cleaning database of inserted dataset records failed. "
-                    + "Subsequent tests may fail. It is likely your "
-                    + "test inserted a record. "
-                    + "Please delete manually at end of test", ex);
+            Logger.getLogger(JpaLoader.class
+                    .getName()).log(Level.SEVERE,
+                            "Cleaning database of inserted dataset records failed. "
+                            + "Subsequent tests may fail. It is likely your "
+                            + "test inserted a record. "
+                            + "Please delete manually at end of test", ex);
         }
     }
 
@@ -390,9 +431,11 @@ public class JpaLoader {
                 if (em.find(clazz, id) != null) {
                     Object obj2 = em.find(clazz, id);
                     em.remove(obj2);
+
                 }
             } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                Logger.getLogger(JpaLoader.class.getName()).log(Level.WARNING, "Error deleting object from dataset", ex);
+                Logger.getLogger(JpaLoader.class
+                        .getName()).log(Level.WARNING, "Error deleting object from dataset", ex);
             }
         });
     }
@@ -401,27 +444,26 @@ public class JpaLoader {
         try {
             Class c = reference.getClass();
             Integer id = (Integer) c.getMethod("getId").invoke(reference);
-            return (E) dataSetClasses.get(c).get(id);
+            //merge and refresh the object
+            E obj = em.merge((E)dataSetClasses.get(c).get(id));
+            em.refresh(obj);
+            return obj;
+
         } catch (NoSuchMethodException ex) {
-            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("No method "
-                    + "getId for class {0}", reference.getClass()), ex);
+            Logger.getLogger(JpaLoader.class
+                    .getName()).log(Level.SEVERE, MessageFormat.format("No method "
+                                    + "getId for class {0}", reference.getClass()), ex);
             return reference;
         } catch (IllegalAccessException | IllegalArgumentException |
                 InvocationTargetException | SecurityException ex) {
-            Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, "Error looking up "
-                    + "reference object in dataset", ex);
-            throw new LookupException("Error looking up reference entity in dataset", ex);
+            Logger.getLogger(JpaLoader.class
+                    .getName()).log(Level.SEVERE, "Error looking up "
+                            + "reference object in dataset", ex);
+            throw new LookupException(
+                    "Error looking up reference entity in dataset", ex);
         }
     }
 
-    private List<Field> getAllFields(Class clazz) {
-        List<Field> fields = new LinkedList<>();
-        Class currentClass = clazz;
-        while (currentClass != Object.class) {
-            fields.addAll(Arrays.asList(currentClass.getDeclaredFields()));
-            currentClass = currentClass.getSuperclass();
-        }
-        return fields;
-    }
+
 
 }

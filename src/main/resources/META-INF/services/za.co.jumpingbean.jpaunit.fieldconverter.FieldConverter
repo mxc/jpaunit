@@ -1,0 +1,10 @@
+za.co.jumpingbean.jpaunit.fieldconverter.BigDecimalFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.BooleanFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.DateFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.IntegerFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.StringFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.LocalDateFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.ByteFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.DoubleFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.LongFieldConverter
+za.co.jumpingbean.jpaunit.fieldconverter.FloatFieldConverter

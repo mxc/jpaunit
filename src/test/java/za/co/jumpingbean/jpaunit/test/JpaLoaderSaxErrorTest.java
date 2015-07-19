@@ -17,23 +17,20 @@
  */
 package za.co.jumpingbean.jpaunit.test;
 
-import java.util.List;
+import java.text.ParseException;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
-import javax.persistence.Query;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
-import za.co.jumpingbean.jpaunit.test.model.EntityWithEmbeddedValue;
 
 /**
  *
  * @author mark
  */
-public class JpaLoaderEmbeddedEntityTest {
+public class JpaLoaderSaxErrorTest {
 
     private static EntityManager em;
     private final String modelPackageName = "za.co.jumpingbean.jpaunit.test.model";
@@ -43,28 +40,12 @@ public class JpaLoaderEmbeddedEntityTest {
         em = Persistence.createEntityManagerFactory("jpaunittest").createEntityManager();
     }
 
-    @Test
+    @Test(expected = ParserException.class)
     public void embeddedTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
-        loader.init("META-INF/entitywithembeddedvalueentity.xml", modelPackageName,
+        loader.init("META-INF/simplesaxerrorxml.xml", modelPackageName,
                 new SaxHandler(), em);
         loader.load();
         em.clear();
-        em.getTransaction().begin();
-        try {
-            Query tmpq = em.createQuery("Select s from EntityWithEmbeddedValue s");
-            List<EntityWithEmbeddedValue> list = tmpq.getResultList();
-            Assert.assertEquals("Should have found 3 entties",4,list.size());
-            Query qry = em.createQuery("Select c from EntityWithEmbeddedValue c"
-                    + " where c.embeddableEntity.stringValue like ?");
-            qry.setParameter(1,"String Value 2-3");
-            EntityWithEmbeddedValue ent = (EntityWithEmbeddedValue) qry.getSingleResult();
-            Assert.assertNotNull("Should have found entity", ent);
-            Assert.assertEquals("Failed to retrieve correct stringValue", 
-                    new Integer(130), ent.getEmbeddableEntity().getIntValue());
-        } finally {
-            em.getTransaction().commit();
-            loader.delete();
-        }
     }
 }

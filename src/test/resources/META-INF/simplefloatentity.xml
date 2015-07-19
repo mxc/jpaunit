@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleFloatEntity id="1" floatValue="100.32" />
+    <SimpleFloatEntity id="2" floatValue="0.2" />
+    <SimpleFloatEntity id="3" floatValue="" />
+</dataset>

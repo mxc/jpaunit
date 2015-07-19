@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleLongEntity id="1" longValue="3000" />
+    <SimpleStringEntity id="1" stringValue="test" />
+    <EntityAssocAttribOverride id="1" newStringValue="String Value" simpleLongValue1_id="1"
+    intValue="10" localDateValue="2014-05-05" newInt="20" newString="new string" 
+    newLocalDate="2014-05-04"  simpleLongValue2_id="1" simpleStringEntity4_id="1"
+    newStringValue4="string val4" />
+    <EntityAssocAttribOverride id="2" newStringValue="String Value" simpleLongValue1_id="1"
+    intValue="10" localDateValue="2014-05-05" newInt="20" newString="new string 1" 
+    newLocalDate="2014-05-04"  simpleLongValue2_id="1" simpleStringEntity4_id="1"
+    newStringValue4="string val4" />
+</dataset>

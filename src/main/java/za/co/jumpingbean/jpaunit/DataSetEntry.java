@@ -17,16 +17,22 @@
  */
 package za.co.jumpingbean.jpaunit;
 
+import java.lang.reflect.Field;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.persistence.AssociationOverride;
+import javax.persistence.AssociationOverrides;
 import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
+import javax.persistence.Column;
+import javax.persistence.JoinColumn;
 
 /**
  *
@@ -48,17 +54,94 @@ public class DataSetEntry {
     }
 
     private void updateOverrides() {
+        //Process Class overrides, override and associationOverride,asssociationOverrides
         Class currentClass = clazz;
         while (currentClass.getSuperclass() != Object.class) {
             AttributeOverrides attributeOverrides[] = (AttributeOverrides[]) currentClass.getAnnotationsByType(AttributeOverrides.class);
-            for (AttributeOverrides os : attributeOverrides) {
-                for (AttributeOverride o : os.value()) {
-                    String orignalName = o.name();
-                    String overridenName = o.column().name();
-                    overrides.put(overridenName, orignalName);
-                }
-            }
+            processOverridesArray(attributeOverrides);
+            AttributeOverride[] tmpOverrides = (AttributeOverride[]) currentClass.getAnnotationsByType(AttributeOverride.class);
+            processOverrideArray(tmpOverrides);
             currentClass = currentClass.getSuperclass();
+            //Associations
+            AssociationOverrides[] associationOverrides = (AssociationOverrides[]) currentClass.getAnnotationsByType(AssociationOverrides.class);
+            processAssociationOverridesArray(associationOverrides);
+            AssociationOverride[] associationOverride = (AssociationOverride[]) currentClass.getAnnotationsByType(AssociationOverride.class);
+            processAssociationOverrideArray(associationOverride);
+        }
+        //Process field Overrides
+        List<Field> fields = Utility.getAllFields(clazz);
+        for (Field field : fields) {
+            AttributeOverrides attributeOverridesArray[] = field.getAnnotationsByType(AttributeOverrides.class);
+            processOverridesArray(attributeOverridesArray);
+            AttributeOverride[] attributeOverrideArray = field.getAnnotationsByType(AttributeOverride.class);
+            processOverrideArray(attributeOverrideArray);
+            AssociationOverrides[] associationOverrides = (AssociationOverrides[]) field.getAnnotationsByType(AssociationOverrides.class);
+            processAssociationOverridesArray(associationOverrides);
+            AssociationOverride[] associationOverride = (AssociationOverride[]) field.getAnnotationsByType(AssociationOverride.class);
+            processAssociationOverrideArray(associationOverride);
+            JoinColumn[] joinColumns = field.getAnnotationsByType(JoinColumn.class);
+            processJoinColumns(joinColumns,field.getName());
+            Column[] columnsArray = field.getAnnotationsByType(Column.class);
+            processColuns(columnsArray, field.getName());
+        }
+    }
+
+    private void processJoinColumns(JoinColumn[] joinColumns,String originalName) {
+        Arrays.stream(joinColumns).forEach(c -> {
+            String tmpName = c.name();
+            String newName = tmpName.substring(0, tmpName.length() - 3);
+            if (!newName.equals(originalName)) {
+                overrides.put(newName, originalName);
+            }
+        });
+    }
+
+    private void processColuns(Column[] columns, String originalName) {
+        Arrays.stream(columns).forEach(c -> {
+            String newName = c.name();
+            if (!newName.equals(originalName)) {
+                overrides.put(newName, originalName);
+            }
+        });
+    }
+
+    private void processAssociationOverridesArray(AssociationOverrides[] array) {
+        for (AssociationOverrides os : array) {
+            processAssociationOverrideArray(os.value());
+        }
+    }
+
+    /**
+     * Associations override names are the names of the database filed which by
+     * convention for JPAUnit end in _id. We need to strip the _id out for the
+     * lookup
+     *
+     * @param array
+     */
+    private void processAssociationOverrideArray(AssociationOverride[] array) {
+        for (AssociationOverride o : array) {
+            String orignalName = o.name();
+            String tmpName = o.joinColumns()[0].name();
+            String newName = tmpName.substring(0, tmpName.length() - 3);
+            if (!newName.equals(orignalName)) {
+                overrides.put(newName, orignalName);
+            }
+        }
+    }
+
+    private void processOverrideArray(AttributeOverride[] os) {
+        for (AttributeOverride o : os) {
+            String orignalName = o.name();
+            String newName = o.column().name();
+            if (!newName.equals(orignalName)) {
+                overrides.put(newName, orignalName);
+            }
+        }
+    }
+
+    private void processOverridesArray(AttributeOverrides[] attributeOverrides) {
+        for (AttributeOverrides os : attributeOverrides) {
+            processOverrideArray(os.value());
         }
     }
 

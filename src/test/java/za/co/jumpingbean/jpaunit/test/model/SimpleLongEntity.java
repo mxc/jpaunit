@@ -15,24 +15,42 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package za.co.jumpingbean.jpaunit.parser;
+package za.co.jumpingbean.jpaunit.test.model;
 
-import java.math.BigDecimal;
-import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 
 /**
  *
  * @author mark
  */
-public class BigDecimalParser implements Parser<BigDecimal> {
+@Entity
+public class SimpleLongEntity {
 
-    @Override
-    public BigDecimal parse(String elm) throws CannotConvertException {
-        try{    
-        return new BigDecimal(elm);
-        } catch (NumberFormatException ex){
-            throw new CannotConvertException(BigDecimal.class, elm);
-        }
+    @Id
+    @GeneratedValue(strategy = GenerationType.TABLE)
+    @Column(name = "id")
+    private int id;
+
+    private Long longValue;
+
+    public int getId() {
+        return id;
     }
-    
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public Long getLongValue() {
+        return longValue;
+    }
+
+    public void setLongValue(Long longValue) {
+        this.longValue = longValue;
+    }
+
 }

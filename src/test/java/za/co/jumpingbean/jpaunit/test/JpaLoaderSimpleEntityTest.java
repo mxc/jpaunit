@@ -33,8 +33,13 @@ import za.co.jumpingbean.jpaunit.JpaLoader;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.SaxHandler;
 import za.co.jumpingbean.jpaunit.test.model.SimpleBigDecimalEntity;
+import za.co.jumpingbean.jpaunit.test.model.SimpleByteEntity;
 import za.co.jumpingbean.jpaunit.test.model.SimpleDateEntity;
+import za.co.jumpingbean.jpaunit.test.model.SimpleDoubleEntity;
+import za.co.jumpingbean.jpaunit.test.model.SimpleFloatEntity;
+import za.co.jumpingbean.jpaunit.test.model.SimpleIntegerEntity;
 import za.co.jumpingbean.jpaunit.test.model.SimpleLocalDateEntity;
+import za.co.jumpingbean.jpaunit.test.model.SimpleLongEntity;
 import za.co.jumpingbean.jpaunit.test.model.SimpleStringEntity;
 
 /*
@@ -92,7 +97,7 @@ public class JpaLoaderSimpleEntityTest {
             cal.set(Calendar.SECOND, 0);
             cal.set(Calendar.MILLISECOND, 0);
             Query qry = em.createQuery("Select c from SimpleDateEntity c where c.dateValue=?");
-            qry.setParameter(1,cal.getTime());
+            qry.setParameter(1, cal.getTime());
             SimpleDateEntity ent = (SimpleDateEntity) qry.getSingleResult();
             Assert.assertNotNull("Should have found entity with id 3", ent);
             Assert.assertTrue(MessageFormat.format("Date do not match. Expected {0} but was {1}",
@@ -138,6 +143,15 @@ public class JpaLoaderSimpleEntityTest {
                     "Select s from SimpleIntegerEntity s");
             List<SimpleStringEntity> list = qry.getResultList();
             Assert.assertEquals("Failed to retrieve correct integerValue", 3, list.size());
+
+            //Check null insert on long number range exceeded
+            qry = em.createQuery("Select s from SimpleIntegerEntity s where s.id =?");
+            SimpleIntegerEntity tmpIntegere = new SimpleIntegerEntity();
+            tmpIntegere.setId(3);
+            qry.setParameter(1, loader.lookupEntity(tmpIntegere).getId());
+            SimpleIntegerEntity integeree = (SimpleIntegerEntity) qry.getSingleResult();
+            Assert.assertNull(integeree.getIntegerValue());
+
         } finally {
             em.getTransaction().commit();
             loader.delete();
@@ -205,18 +219,125 @@ public class JpaLoaderSimpleEntityTest {
 
             //SimpeBigDecimalEntity has been defined with a precision of 4 decimal places
             //The actual value set is 999.99999 -> this gets rounded to 1000
+            SimpleBigDecimalEntity bigDecimaleEntity = new SimpleBigDecimalEntity();
+            bigDecimaleEntity.setId(4);
+            SimpleBigDecimalEntity actual = loader.lookupEntity(bigDecimaleEntity);
+            //Test rounding of BigDecimal values with precision greater than entity
+            Query qry2 = em.createQuery("Select b from SimpleBigDecimalEntity b where b.id =?");
+            qry2.setParameter(1, actual.getId());
+            ent = (SimpleBigDecimalEntity) qry2.getSingleResult();
             comp = new BigDecimal("1000");
-            qry.setParameter(1, comp);
-            ent = (SimpleBigDecimalEntity) qry.getSingleResult();
-            Assert.assertNotNull("Should have found entity with a balance of 1000 - rounded up from 999.99999", ent);
-
-            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1}", comp.intValue(), ent.getBigDecimalValue().intValue()),
-                    ent.getBigDecimalValue().intValue() == comp.intValue());
+            System.out.println(ent.getBigDecimalValue());
+            Assert.assertTrue(MessageFormat.format("Big Decimal should be {0} but was {1} difference greater than 1", comp.intValue(), ent.getBigDecimalValue().intValue()), 
+                    comp.subtract(ent.getBigDecimalValue()).abs().compareTo(BigDecimal.ONE)<0);
         } finally {
             em.getTransaction().commit();
             loader.delete();
         }
 
+    }
+
+    @Test
+    public void jpaSimpleLongEntityTest() throws ParserException {
+        JpaLoader loader = new JpaLoader();
+        loader.init("META-INF/simplelongentity.xml", modelPackageName, new SaxHandler(), em);
+        loader.load();
+        em.clear();
+        em.getTransaction().begin();
+        try {
+            Query qry = em.createQuery(
+                    "Select s from SimpleLongEntity s");
+            List<SimpleStringEntity> list = qry.getResultList();
+            Assert.assertEquals("Failed to retrieve correct longValue", 3, list.size());
+            qry = em.createQuery("Select s from SimpleLongEntity s where s.id =?");
+            //Check null insert on long number range exceeded
+            SimpleLongEntity longE = new SimpleLongEntity();
+            longE.setId(3);
+            qry.setParameter(1, loader.lookupEntity(longE).getId());
+            SimpleLongEntity longE2 = (SimpleLongEntity) qry.getSingleResult();
+            Assert.assertNull(longE2.getLongValue());
+        } finally {
+            em.getTransaction().commit();
+            loader.delete();
+        }
+    }
+
+    @Test
+    public void jpaSimpleDoubleEntityTest() throws ParserException {
+        JpaLoader loader = new JpaLoader();
+        loader.init("META-INF/simpledoubleentity.xml", modelPackageName, new SaxHandler(), em);
+        loader.load();
+        em.clear();
+        em.getTransaction().begin();
+        try {
+            Query qry = em.createQuery(
+                    "Select s from SimpleDoubleEntity s");
+            List<SimpleStringEntity> list = qry.getResultList();
+            Assert.assertEquals("Failed to retrieve correct doubleValue", 3, list.size());
+            qry = em.createQuery("Select s from SimpleDoubleEntity s where s.id =?");
+            //Check null insert on long number range exceeded
+            SimpleDoubleEntity doublee = new SimpleDoubleEntity();
+            doublee.setId(3);
+            qry.setParameter(1, loader.lookupEntity(doublee).getId());
+            SimpleDoubleEntity doublee2 = (SimpleDoubleEntity) qry.getSingleResult();
+            Assert.assertEquals((double) Double.parseDouble("92233720368547758086786785689789765867867868657856865868658568686867585.5645656456463353434"),
+                    (double) doublee2.getDoubleValue(), 0);
+        } finally {
+            em.getTransaction().commit();
+            loader.delete();
+        }
+    }
+
+    @Test
+    public void jpaSimpleFloatEntityTest() throws ParserException {
+        JpaLoader loader = new JpaLoader();
+        loader.init("META-INF/simplefloatentity.xml", modelPackageName, new SaxHandler(), em);
+        loader.load();
+        em.clear();
+        em.getTransaction().begin();
+        try {
+            Query qry = em.createQuery(
+                    "Select s from SimpleFloatEntity s");
+            List<SimpleStringEntity> list = qry.getResultList();
+            Assert.assertEquals("Failed to retrieve correct floatValue", 3, list.size());
+            qry = em.createQuery("Select s from SimpleFloatEntity s where s.id =?");
+            //Check null insert on long number range exceeded
+            SimpleFloatEntity floate = new SimpleFloatEntity();
+            floate.setId(3);
+            qry.setParameter(1, loader.lookupEntity(floate).getId());
+            SimpleFloatEntity floatee2 = (SimpleFloatEntity) qry.getSingleResult();
+            Assert.assertNull(floatee2.getFloatValue());
+        } finally {
+            em.getTransaction().commit();
+            loader.delete();
+        }
+    }
+
+    @Test
+    public void jpaSimpleByteEntityTest() throws ParserException {
+        JpaLoader loader = new JpaLoader();
+        loader.init("META-INF/simplebyteentity.xml", modelPackageName, new SaxHandler(), em);
+        loader.load();
+        em.clear();
+        em.getTransaction().begin();
+        try {
+            Query qry = em.createQuery(
+                    "Select s from SimpleByteEntity s");
+            List<SimpleStringEntity> list = qry.getResultList();
+            Assert.assertEquals("Failed to retrieve correct byteValue", 3, list.size());
+
+            //Check null insert on long number range exceeded
+            qry = em.createQuery("Select s from SimpleByteEntity s where s.id =?");
+            SimpleByteEntity tmpByte = new SimpleByteEntity();
+            tmpByte.setId(3);
+            qry.setParameter(1, loader.lookupEntity(tmpByte).getId());
+            SimpleByteEntity bytee = (SimpleByteEntity) qry.getSingleResult();
+            Assert.assertNull(bytee.getByteValue());
+
+        } finally {
+            em.getTransaction().commit();
+            loader.delete();
+        }
     }
 
 }
