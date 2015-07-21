@@ -3,8 +3,41 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>za.co.jumpingbean.jpaunit</groupId>
     <artifactId>JpaUnit</artifactId>
-    <version>1.0</version>
+    <version>0.2-SNAPSHOT</version>
     <packaging>jar</packaging>
+    <name>JPAUnit</name>
+    <description>A library to assist with unit testing of JPA code by preloading 
+        a database to a known state before tests are run.</description>
+    <url>https://github.com/mxc/jpaunit</url>
+    <licenses>
+        <license>
+            <name>GNU General Lesser Public License (LGPL) version 2.1</name>
+            <url>http://www.gnu.org/licenses/lgpl-2.1.html</url>
+        </license>
+    </licenses> 
+    <developers>
+        <developer>
+            <name>Mark Clarke</name>
+            <email>dev@jumpingbean.co.za</email>
+            <organization>Jumping Bean</organization>
+            <organizationUrl>http://www.jumpingbean.co.za</organizationUrl>
+        </developer>
+    </developers>
+    <scm>
+        <connection>scm:git:git@github.com:mxc/jpaunit.git</connection>
+        <developerConnection>scm:git:git@github.com:mxc/jpaunit.git</developerConnection>
+        <url>git@github.com:mxc/jpaunit.git</url>
+    </scm> 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
     <build>
         <pluginManagement>
             <plugins>
@@ -24,9 +57,60 @@
                         <showDeprecation>true</showDeprecation>
                     </configuration>
                 </plugin>
-            </plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>2.2.1</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <goals>
+                                <goal>jar-no-fork</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>2.9.1</version>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>1.5</version>
+                    <executions>
+                        <execution>
+                            <id>sign-artifacts</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>sign</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <version>1.6.3</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <serverId>ossrh</serverId>
+                        <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                        <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                    </configuration>
+                </plugin>                    
+            </plugins>                                
         </pluginManagement>
-    </build>    
+    </build>
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -63,4 +147,7 @@
             <scope>provided</scope>
         </dependency>                     
     </dependencies>
+    <properties>
+        <netbeans.hint.license>lgpl21</netbeans.hint.license>
+    </properties>
 </project>
