@@ -1,4 +1,4 @@
-#JPAUnit a replacement for DBUnit
+#JPAUnit - A library to assist with testing your JPA code
 
 Tired of trying to get DBUnit to work with JPA unit tests? This library
 is meant to replace DBUnit and uses DBUnit xml dataset files to load the test 
