@@ -25,7 +25,9 @@ server to run your tests.
   &lt;groupId&gt;za.co.jumpingbean.jpaunit&lt;Igroupid&gt;
   &lt;artifactId&gt;JpaUnit&lt;artifactId&gt;
   &lt;version&gt;0.1&lt;/version&gt;
+  &lt;scope&gt;test&lt;/scope&gt;
 &lt;/dependency&gt;
+
 </pre>
 
 ### JPAUnit relies on convention
