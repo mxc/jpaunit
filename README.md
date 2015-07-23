@@ -18,6 +18,16 @@ With Maven you define a separate persistence.xml with your connection informatio
 testing using a RESOURCE_LOCAL connection which means you don't need an application
 server to run your tests.
 
+###Using JPAUnit with Maven ###
+
+<pre>
+<dependency>
+  <groupId>za.co.jumpingbean.jpaunit<Igroupid>
+  <artifactId>JpaUnit<artifactId>
+  <version>0.1</version>
+</dependency>
+</pre>
+
 ### JPAUnit relies on convention
 
 Currently JPAUnit relies on Java POJO naming conventions. It assumes variable and 
