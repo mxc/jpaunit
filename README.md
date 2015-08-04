@@ -22,7 +22,7 @@ server to run your tests.
 
 <pre>
 &lt;dependency&gt;
-  &lt;groupId&gt;za.co.jumpingbean.jpaunit&lt;Igroupid&gt;
+  &lt;groupId&gt;za.co.jumpingbean.jpaunit&lt;groupid&gt;
   &lt;artifactId&gt;JpaUnit&lt;artifactId&gt;
   &lt;version&gt;0.1&lt;/version&gt;
   &lt;scope&gt;test&lt;/scope&gt;
