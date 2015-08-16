@@ -89,15 +89,16 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
                     String attr1 = attributes.getLocalName(0);
                     String attr2 = attributes.getLocalName(1);
                     if (attr1.endsWith("_id") && attr2.endsWith("_id")) {
-                        boolean found;
-                        found = addToManyToMany(attr1, attr2,
-                                Integer.parseInt(attributes.getValue(0)), 
-                                Integer.parseInt(attributes.getValue(1)));
-                        if (!found) {
-                            found = addToManyToMany(attr2, attr1,
-                                    Integer.parseInt(attributes.getValue(1)),
-                                    Integer.parseInt(attributes.getValue(0)));
-                        }
+                      //since the xml file has no idea who the owner is 
+                        //we add the bidrectional relationship to both sides
+                        //of the @ManyToMany relationship and let JPA figure it 
+                        //out.
+                        boolean found = addToManyToMany(attr1, attr2,
+                                Integer.parseInt(attributes.getValue(0)),
+                                Integer.parseInt(attributes.getValue(1)))
+                                | addToManyToMany(attr2, attr1,
+                                        Integer.parseInt(attributes.getValue(1)),
+                                        Integer.parseInt(attributes.getValue(0)));
                         if (!found) {
                             Logger.getLogger(SaxHandler.class.getName()).log(Level.WARNING,
                                     "{0} with {1} & {2} not part of many-to-many "
@@ -123,16 +124,16 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
         }
     }
 
-    private boolean addToManyToMany(String owner, String owned, 
+    private boolean addToManyToMany(String owner, String owned,
             final Integer ownerId, final Integer ownedId) {
-        owner = owner.substring(0,1).toUpperCase()+owner.substring((1));
-        owned = owned.substring(0,1).toUpperCase()+owned.substring((1));
+        owner = owner.substring(0, 1).toUpperCase() + owner.substring((1));
+        owned = owned.substring(0, 1).toUpperCase() + owned.substring((1));
         String ownerClassName = modelPackageName + "." + owner.substring(0, owner.indexOf("_id"));
         String ownedClassName = modelPackageName + "." + owned.substring(0, owned.indexOf("_id"));
-        
+
         return this.dataSetEnties.stream().anyMatch(de -> {
             if (de.getClazz().getName().equals(ownerClassName)
-                    && Integer.parseInt(de.getValue("id"))==ownerId
+                    && Integer.parseInt(de.getValue("id")) == ownerId
                     && de.getManyToManyRelationships().get(ownedClassName) != null) {
                 de.getManyToManyRelationships().
                         get(ownedClassName).add(ownedId);
