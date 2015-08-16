@@ -39,11 +39,12 @@ variable name rather than the database column name. For @OneToMany relationships
 data set file should use the variable name with "_id" appended for reference to the
 foreign objects primary key.
 
-Currently JPA can handle:
+Currently JPA can handle field level attributes:
 
 *@OverrideAttributes,
 *@Embedded properties,
 *Java Enums with our without @Enumerated
+*@ManyToMany relationships
 
 
 ###How to use

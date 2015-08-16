@@ -22,11 +22,15 @@ import za.co.jumpingbean.jpaunit.fieldconverter.FieldConverter;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -75,31 +79,29 @@ public class JpaLoader {
         ServiceLoader<FieldConverter> foundParsers
                 = ServiceLoader.load(FieldConverter.class);
 
-        foundParsers.forEach(c
-                -> {
-                    try {
-                        Method m = c.getClass().getMethod("parse", String.class);
-                        converters.addParser(m.getReturnType(), c);
-                        Logger.getLogger((JpaLoader.class.getName())).log(Level.INFO, MessageFormat.format("Method parse found in class {0} ", c));
-                    } catch (NoSuchMethodException | SecurityException ex) {
-                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Method parse not found in class {0} ", c), ex);
-                    }
-                }
+        foundParsers.forEach(c -> {
+            try {
+                Method m = c.getClass().getMethod("parse", String.class);
+                converters.addParser(m.getReturnType(), c);
+                Logger.getLogger((JpaLoader.class.getName())).log(Level.INFO, MessageFormat.format("Method parse found in class {0} ", c));
+            } catch (NoSuchMethodException | SecurityException ex) {
+                Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Method parse not found in class {0} ", c), ex);
+            }
+        }
         );
 
         ServiceLoader<ObjectConstructor> foundConstructors
                 = ServiceLoader.load(ObjectConstructor.class);
 
-        foundConstructors.forEach(c
-                -> {
-                    try {
-                        Method m = c.getClass().getMethod("construct", String.class);
-                        converters.addObjectConstructor(m.getReturnType(), c);
-                        Logger.getLogger((JpaLoader.class.getName())).log(Level.INFO, MessageFormat.format("Method construct found in class {0} ", c));
-                    } catch (NoSuchMethodException | SecurityException ex) {
-                        Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Method construct not found in class {0} ", c), ex);
-                    }
-                }
+        foundConstructors.forEach(c -> {
+            try {
+                Method m = c.getClass().getMethod("construct", String.class);
+                converters.addObjectConstructor(m.getReturnType(), c);
+                Logger.getLogger((JpaLoader.class.getName())).log(Level.INFO, MessageFormat.format("Method construct found in class {0} ", c));
+            } catch (NoSuchMethodException | SecurityException ex) {
+                Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE, MessageFormat.format("Method construct not found in class {0} ", c), ex);
+            }
+        }
         );
 
     }
@@ -150,8 +152,8 @@ public class JpaLoader {
                     } catch (PersistenceException ex) {
                         Logger.getLogger(JpaLoader.class
                                 .getName()).log(Level.SEVERE,
-                                        "**** Error committing load for test. Closing connection ...", ex);
-                        if(em.isOpen()){
+                                        "Error committing load for test. Closing connection ...", ex);
+                        if (em.isOpen()) {
                             em.close();
                         }
                         throw ex;
@@ -177,9 +179,9 @@ public class JpaLoader {
         dataset.stream().forEach(entry -> {
             Class clazz = entry.getClazz();
 
-            Logger
-                    .getLogger(JpaLoader.class
-                            .getName()).log(Level.INFO, MessageFormat.format("*** Processing {0} with id {1} ***",
+            Logger.getLogger(JpaLoader.class
+                    .getName()).log(Level.INFO, MessageFormat
+                            .format("Processing {0} with id {1} ***",
                                     clazz, entry.getValue("id")));
 
             try {
@@ -188,7 +190,7 @@ public class JpaLoader {
                 //Set object properties
                 updateObject(obj, fields, entry);
                 try {
-                    //Create linked list in datSetClasses table to
+                    //Create linked list in dataSetClasses table to
                     //prevent null pointer checks
                     if (!dataSetClasses.containsKey(clazz)) {
                         dataSetClasses.put(clazz, new HashMap<>());
@@ -202,7 +204,8 @@ public class JpaLoader {
                     //original id to look up keep from source file.
                     dataSetClasses.get(clazz).put(id, obj);
                     Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO,
-                            MessageFormat.format("Loaded {0} entity ", clazz));
+                            MessageFormat.format("Loaded {0} entity -- {1} ", clazz,
+                                    obj.toString()));
                 } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                     Logger.getLogger(JpaLoader.class
                             .getName()).log(Level.SEVERE,
@@ -211,6 +214,7 @@ public class JpaLoader {
                     Logger.getLogger(JpaLoader.class
                             .getName()).log(Level.SEVERE,
                                     MessageFormat.format("Persistence error for class {0}", clazz), ex);
+                    throw ex;
                 }
             } catch (InstantiationException | IllegalAccessException ex) {
                 Logger.getLogger(JpaLoader.class
@@ -241,7 +245,7 @@ public class JpaLoader {
         );
     }
 
-    private void updateObject(Object obj, List<Field> fields, DataSetEntry entry)
+    private void updateObject(final Object obj, List<Field> fields, DataSetEntry entry)
             throws IllegalAccessException, InstantiationException {
 
         //Iterate over set methods on Entity and populate entity with 
@@ -266,8 +270,7 @@ public class JpaLoader {
 
                 }
 
-            } else if (parameterClass.getDeclaredAnnotation(Embeddable.class
-            ) != null) {
+            } else if (parameterClass.getDeclaredAnnotation(Embeddable.class) != null) {
                 //Determine if this is a complex data type. i.e and
                 //@embeddable data type that has its own properties
                 //and values
@@ -312,7 +315,47 @@ public class JpaLoader {
                 } catch (NoSuchFieldException | SecurityException ex) {
                     Logger.getLogger(JpaLoader.class
                             .getName()).log(Level.SEVERE,
-                                    MessageFormat.format("Error converting enum type {0}", parameterClass), ex);
+                                    MessageFormat.format("Error converting enum type {0}",
+                                            parameterClass), ex);
+                }
+            } else if (Collection.class.isAssignableFrom(parameterClass)) {
+                //check if this is a many-to-many collection
+                try {
+                    ParameterizedType type = (ParameterizedType) currField.getGenericType();
+                    final Class tmpParameterClass = parameterClass;
+                    final Class actualType = (Class) type.getActualTypeArguments()[0];
+                    if (entry.getManyToManyRelationships().containsKey(actualType.getName())) {
+                        List<Integer> ids = entry.getManyToManyRelationships()
+                                .get(actualType.getName());
+                        Collection coll;
+                        if (List.class.isAssignableFrom(tmpParameterClass)) {
+                            coll = new LinkedList();
+                        } else {
+                            coll = new HashSet();
+                        }
+                        ids.forEach((Integer id) -> {
+                            try {
+                                Object tmpObj = actualType.newInstance();
+                                Method setId = tmpObj.getClass().getMethod("setId", Integer.class);
+                                setId.invoke(tmpObj, id);
+                                tmpObj = this.lookupEntity(tmpObj);
+                                coll.add(tmpObj);
+                                Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO,
+                                        "Updated {0} many-to-many collection on {1}",
+                                        new Object[]{tmpObj.getClass(), tmpParameterClass});
+                            } catch (NullPointerException | InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException | IllegalArgumentException | InvocationTargetException ex) {
+                                Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
+                                        "Error updating collection. Is the owned class "
+                                        + "declared before the owning class?", ex);
+                            }
+                        });
+                        this.setField(currField, obj, coll);
+                    }
+                } catch (ClassCastException ex) {
+                    Logger.getLogger(JpaLoader.class
+                            .getName()).log(Level.SEVERE,
+                                    MessageFormat.format("Error converting collection type {0}",
+                                            parameterClass), ex);
                 }
             } else {
                 if (parameterClass.isPrimitive()) {
@@ -363,17 +406,14 @@ public class JpaLoader {
                 }
 
             }
-
         });
     }
-
 
     private void setField(Field field, Object object, Object value) {
         try {
             field.setAccessible(true);
             field.set(object, value);
             field.setAccessible(false);
-
         } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
             Logger.getLogger(JpaLoader.class
                     .getName()).log(Level.SEVERE, MessageFormat.format("Reflection error "
@@ -446,8 +486,8 @@ public class JpaLoader {
             Class c = reference.getClass();
             Integer id = (Integer) c.getMethod("getId").invoke(reference);
             //merge and refresh the object
-            E obj = em.merge((E)dataSetClasses.get(c).get(id));
-            em.refresh(obj);
+            E obj = em.merge((E) dataSetClasses.get(c).get(id));
+            //em.refresh(obj);
             return obj;
 
         } catch (NoSuchMethodException ex) {
@@ -464,7 +504,5 @@ public class JpaLoader {
                     "Error looking up reference entity in dataset", ex);
         }
     }
-
-
 
 }

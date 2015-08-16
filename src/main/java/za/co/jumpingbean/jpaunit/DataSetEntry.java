@@ -19,10 +19,13 @@
 package za.co.jumpingbean.jpaunit;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +37,8 @@ import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
 import javax.persistence.Column;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 
 /**
  *
@@ -47,6 +52,7 @@ public class DataSetEntry {
     private final List<String> values = new ArrayList<>();
     //Create a lookup for attribute overrides
     private final Map<String, String> overrides = new HashMap<>();
+    private final Map<String, List<Integer>> manyToManyRelationships = new HashMap<>();
 
     public DataSetEntry(Integer index, String clazz) throws ClassNotFoundException {
         this.clazz = Class.forName(clazz);
@@ -55,7 +61,7 @@ public class DataSetEntry {
     }
 
     private void updateOverrides() {
-        //Process Class overrides, override and associationOverride,asssociationOverrides
+        //Process Class overrides, override, associationOverride and asssociationOverrides
         Class currentClass = clazz;
         while (currentClass.getSuperclass() != Object.class) {
             AttributeOverrides attributeOverrides[] = (AttributeOverrides[]) currentClass.getAnnotationsByType(AttributeOverrides.class);
@@ -81,13 +87,15 @@ public class DataSetEntry {
             AssociationOverride[] associationOverride = (AssociationOverride[]) field.getAnnotationsByType(AssociationOverride.class);
             processAssociationOverrideArray(associationOverride);
             JoinColumn[] joinColumns = field.getAnnotationsByType(JoinColumn.class);
-            processJoinColumns(joinColumns,field.getName());
+            processJoinColumns(joinColumns, field.getName());
             Column[] columnsArray = field.getAnnotationsByType(Column.class);
-            processColuns(columnsArray, field.getName());
+            processColumns(columnsArray, field.getName());
+            ManyToMany[] manyToManyAnnotations = field.getAnnotationsByType(ManyToMany.class);
+            processManyToMany(manyToManyAnnotations, field);
         }
     }
 
-    private void processJoinColumns(JoinColumn[] joinColumns,String originalName) {
+    private void processJoinColumns(JoinColumn[] joinColumns, String originalName) {
         Arrays.stream(joinColumns).forEach(c -> {
             String tmpName = c.name();
             String newName = tmpName.substring(0, tmpName.length() - 3);
@@ -97,7 +105,7 @@ public class DataSetEntry {
         });
     }
 
-    private void processColuns(Column[] columns, String originalName) {
+    private void processColumns(Column[] columns, String originalName) {
         Arrays.stream(columns).forEach(c -> {
             String newName = c.name();
             if (!newName.equals(originalName)) {
@@ -144,6 +152,10 @@ public class DataSetEntry {
         for (AttributeOverrides os : attributeOverrides) {
             processOverrideArray(os.value());
         }
+    }
+
+    public void addToManyToManyCollection(String clazz, Integer id) {
+        this.manyToManyRelationships.get(clazz).add(id);
     }
 
     public void addProperty(String column, String value) {
@@ -236,6 +248,20 @@ public class DataSetEntry {
             Logger.getLogger(DataSetEntry.class.getName()).log(Level.SEVERE,
                     MessageFormat.format("Error removing property {0}", property), ex);
         }
+    }
+
+    //Create an entry for ManyToMany collections in owning class
+    private void processManyToMany(ManyToMany[] manyToManyAnnotations, Field field) {
+        Arrays.stream(manyToManyAnnotations).forEach(mtm -> {
+            //only add the owning side of the manytomany relationship
+            Type[] types = ((ParameterizedType) field.getGenericType())
+                    .getActualTypeArguments();
+            manyToManyRelationships.put(((Class)(types[0])).getName(),new LinkedList());
+        });
+    }
+
+    public Map<String, List<Integer>> getManyToManyRelationships() {
+        return manyToManyRelationships;
     }
 
 }

@@ -19,9 +19,9 @@
             <property name="javax.persistence.jdbc.url" value="jdbc:mysql://127.0.0.1:3306/jpaunittest"/>
             <property name="javax.persistence.jdbc.user" value="root"/>
             <property name="javax.persistence.jdbc.driver" value="com.mysql.jdbc.Driver"/>
-            <property name="javax.persistence.jdbc.password" value="dagama"/>
+            <property name="javax.persistence.jdbc.password" value="pass"/>
             <property name="javax.persistence.schema-generation.database.action" value="drop-and-create"/>
             <property name="javax.persistence.schema-generation.create-source" value="metadata" />          
         </properties>
-    </persistence-unit> -->
+    </persistence-unit>-->
 </persistence>

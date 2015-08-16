@@ -57,7 +57,8 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
     }
 
     @Override
-    public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
+    public void startElement(String uri, String localName, String qName,
+            Attributes attributes) throws SAXException {
         //ignore the root element
         if (qName.equalsIgnoreCase("dataset")) {
             return;
@@ -70,29 +71,91 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
             DataSetEntry entry = new DataSetEntry(count, className);
             this.dataSetEnties.add(entry);
             //Set up lists to keep xml attributes and values
-            //columns = new ArrayList<>();
-            //values = new ArrayList<>();
 
-            //count.set(0);
             //Iterate over attribues  and populate columns and values list
             IntStream.range(0, attributes.getLength()).forEach((int i) -> {
                 entry.addProperty(attributes.getLocalName(i), attributes.getValue(i));
             });
         } catch (ClassNotFoundException ex) {
-            Logger.getLogger(SaxHandler.class.getName()).log(Level.SEVERE, "Class not found for {0}", className);
+            if (attributes.getLength() != 2) {
+                Logger.getLogger(SaxHandler.class.getName()).log(Level.WARNING, "Class "
+                        + "not found for {0}.", className);
+            } else {
+                try {
+                    Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "Class "
+                            + "not found for {0}. Checking to see if it is part of a"
+                            + "many-to-many relationship", className);
+
+                    String attr1 = attributes.getLocalName(0);
+                    String attr2 = attributes.getLocalName(1);
+                    if (attr1.endsWith("_id") && attr2.endsWith("_id")) {
+                        boolean found;
+                        found = addToManyToMany(attr1, attr2,
+                                Integer.parseInt(attributes.getValue(0)), 
+                                Integer.parseInt(attributes.getValue(1)));
+                        if (!found) {
+                            found = addToManyToMany(attr2, attr1,
+                                    Integer.parseInt(attributes.getValue(1)),
+                                    Integer.parseInt(attributes.getValue(0)));
+                        }
+                        if (!found) {
+                            Logger.getLogger(SaxHandler.class.getName()).log(Level.WARNING,
+                                    "{0} with {1} & {2} not part of many-to-many "
+                                    + "relationship", new Object[]{className, attr1,
+                                        attr2});
+                        } else {
+                            Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO,
+                                    "{0} with {1} & {2} is part of many-to-many "
+                                    + "relationship", new Object[]{className, attr1,
+                                        attr2});
+                        }
+                    } else {
+                        Logger.getLogger(SaxHandler.class.getName()).log(Level.WARNING,
+                                "{0} with {1} attributes is not part of many-to-many"
+                                + " relationship", new Object[]{className,
+                                    attributes.getLength()});
+                    }
+                } catch (NumberFormatException exp) {
+                    Logger.getLogger(SaxHandler.class.getName()).log(Level.WARNING,
+                            "Error processing {0}", className);
+                }
+            }
         }
+    }
 
+    private boolean addToManyToMany(String owner, String owned, 
+            final Integer ownerId, final Integer ownedId) {
+        owner = owner.substring(0,1).toUpperCase()+owner.substring((1));
+        owned = owned.substring(0,1).toUpperCase()+owned.substring((1));
+        String ownerClassName = modelPackageName + "." + owner.substring(0, owner.indexOf("_id"));
+        String ownedClassName = modelPackageName + "." + owned.substring(0, owned.indexOf("_id"));
+        
+        return this.dataSetEnties.stream().anyMatch(de -> {
+            if (de.getClazz().getName().equals(ownerClassName)
+                    && Integer.parseInt(de.getValue("id"))==ownerId
+                    && de.getManyToManyRelationships().get(ownedClassName) != null) {
+                de.getManyToManyRelationships().
+                        get(ownedClassName).add(ownedId);
+                return true;
+            } else {
+                return false;
+            }
+        });
     }
 
     @Override
 
-    public void endDocument() throws SAXException {
-        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "finished dataset {0} processing.", fileName);
+    public
+            void endDocument() throws SAXException {
+        Logger.getLogger(SaxHandler.class
+                .getName()).log(Level.INFO, "finished dataset {0} processing.", fileName);
     }
 
     @Override
-    public void startDocument() throws SAXException {
-        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "started dataset {0} processing.", fileName);
+    public
+            void startDocument() throws SAXException {
+        Logger.getLogger(SaxHandler.class
+                .getName()).log(Level.INFO, "started dataset {0} processing.", fileName);
     }
 
     @Override
@@ -107,12 +170,15 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
         this.dataSetEnties.clear();
         try {
             SAXParser parser;
-            SAXParserFactory parserFactor = SAXParserFactory.newInstance();
-            parser = parserFactor.newSAXParser();
+            SAXParserFactory parserFactory = SAXParserFactory.newInstance();
+            parser = parserFactory.newSAXParser();
             parser.parse(ClassLoader.getSystemResourceAsStream(fileName), this);
+
         } catch (ParserConfigurationException | SAXException | IOException ex) {
-            Logger.getLogger(SaxHandler.class.getName()).log(Level.SEVERE, "Error processing xml parser", ex);
-            throw new ParserException("Error processing SAX XML parser", ex);
+            Logger.getLogger(SaxHandler.class
+                    .getName()).log(Level.SEVERE, "Error processing xml parser", ex);
+            throw new ParserException(
+                    "Error processing SAX XML parser", ex);
         }
     }
 

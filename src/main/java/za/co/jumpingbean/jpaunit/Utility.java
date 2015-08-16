@@ -31,7 +31,6 @@ public interface Utility {
      static List<Field> getAllFields(Class clazz) {
         List<Field> fields = new LinkedList<>();
         Class currentClass = clazz;
-
         while (currentClass != Object.class) {
             fields.addAll(Arrays.asList(currentClass.getDeclaredFields()));
             currentClass = currentClass.getSuperclass();
