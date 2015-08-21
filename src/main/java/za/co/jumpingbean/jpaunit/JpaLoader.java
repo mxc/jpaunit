@@ -45,8 +45,8 @@ import javax.persistence.Enumerated;
 import javax.persistence.PersistenceException;
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 import za.co.jumpingbean.jpaunit.exception.ConnectionException;
+import za.co.jumpingbean.jpaunit.exception.JpaLoaderException;
 import za.co.jumpingbean.jpaunit.exception.ParserStreamException;
-import za.co.jumpingbean.jpaunit.exception.LookupException;
 import za.co.jumpingbean.jpaunit.exception.ParserException;
 import za.co.jumpingbean.jpaunit.loader.JPAParser;
 import za.co.jumpingbean.jpaunit.objectconstructor.ObjectConstructor;
@@ -64,7 +64,7 @@ public class JpaLoader {
     //The data to be provided by a JPAParser
     List<DataSetEntry> dataset = new ArrayList<>();
     //Keep list of classes added during load for foreign key lookup
-    final Map<Class, Map<Integer, Object>> dataSetClasses = new LinkedHashMap<>();
+    final Map<Class, Map<Integer, Integer>> dataSetClasses = new LinkedHashMap<>();
     //Counter to log how many enitites where loaded
     private final AtomicInteger count = new AtomicInteger(0);
     EntityManager em;
@@ -72,8 +72,8 @@ public class JpaLoader {
 
     /**
      * Load converter functions supplied by library and custom converter types
-     * defined by client. All converters need to implement the @link{Converter}
-     * interface
+     * defined by client. All converters need to implement the
+     * @link{Converter} interface
      */
     static {
         ServiceLoader<FieldConverter> foundParsers
@@ -134,7 +134,10 @@ public class JpaLoader {
     }
 
     public void load() throws ParserException {
+        //setDefaultErrorHanlder();
+        dataset.clear();
         this.importDataSet();
+
         boolean active = em.getTransaction().isActive();
         try {
             if (!active) {
@@ -148,7 +151,6 @@ public class JpaLoader {
                 } else {
                     try {
                         em.getTransaction().commit();
-
                     } catch (PersistenceException ex) {
                         Logger.getLogger(JpaLoader.class
                                 .getName()).log(Level.SEVERE,
@@ -181,7 +183,7 @@ public class JpaLoader {
 
             Logger.getLogger(JpaLoader.class
                     .getName()).log(Level.INFO, MessageFormat
-                            .format("Processing {0} with id {1} ***",
+                            .format("Processing {0} with id {1}",
                                     clazz, entry.getValue("id")));
 
             try {
@@ -198,11 +200,21 @@ public class JpaLoader {
                     //try and merge the object. If data exists or someother
                     //error catch exception. 
                     Integer id = (Integer) obj.getClass().getMethod("getId").invoke(obj);
+                    //Set id to invalid number to avoid merging with auto-assigned number
+                    Method m;
+                    try {
+                        m = obj.getClass().getMethod("setId", Integer.class);
+                    } catch (NoSuchMethodException ex) {
+                        m = obj.getClass().getMethod("setId", Integer.TYPE);
+                    }
+                    m.invoke(obj, -1);
                     obj = this.em.merge(obj);
+                    em.flush();
                     //Add dataset object to cache of dataset objects as it
                     //may be used in a foregin key relationship later. Need
-                    //original id to look up keep from source file.
-                    dataSetClasses.get(clazz).put(id, obj);
+                    //original id to look up real entity id.
+                    dataSetClasses.get(clazz).put(id, (Integer) obj.getClass().
+                            getMethod("getId").invoke(obj));
                     Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO,
                             MessageFormat.format("Loaded {0} entity -- {1} ", clazz,
                                     obj.toString()));
@@ -263,7 +275,8 @@ public class JpaLoader {
                 if (entry.getProperties().contains(propertyName.toString())) {
                     Integer foreignId = Integer.parseInt(entry.getValue(propertyName.toString()));
                     //Find previously created dataset object and set it on current object
-                    Object candidateObject = dataSetClasses.get(parameterClass).get(foreignId);
+                    Integer candidateObjectId = dataSetClasses.get(parameterClass).get(foreignId);
+                    Object candidateObject = em.find(parameterClass, candidateObjectId);
                     this.setField(currField, obj, candidateObject);
                     entry.removeProperty(propertyName.toString());
                     count.incrementAndGet();
@@ -295,15 +308,12 @@ public class JpaLoader {
                         Field field = obj.getClass().getDeclaredField(property);
                         Enumerated enumerated = field.getAnnotation(Enumerated.class
                         );
-                        if (enumerated
-                                != null && enumerated.value()
-                                == EnumType.STRING) {
+                        if (enumerated != null && enumerated.value() == EnumType.STRING) {
                             enumVal = Enum.valueOf(parameterClass, entry.getValue(property));
                         } else {
                             enumVal = parameterClass.getEnumConstants()[Integer.parseInt(entry.getValue(property))];
                         }
-                    }
-                    if (enumVal != null) {
+                    } if (enumVal != null) {
                         this.setField(currField, obj, enumVal);
                         entry.removeProperty(property);
 
@@ -339,11 +349,18 @@ public class JpaLoader {
                                 Method setId = tmpObj.getClass().getMethod("setId", Integer.class);
                                 setId.invoke(tmpObj, id);
                                 tmpObj = this.lookupEntity(tmpObj);
-                                coll.add(tmpObj);
+                                if (tmpObj!=null) coll.add(tmpObj);
                                 Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO,
                                         "Updated {0} many-to-many collection on {1}",
                                         new Object[]{tmpObj.getClass(), tmpParameterClass});
-                            } catch (NullPointerException | InstantiationException | IllegalAccessException | NoSuchMethodException | SecurityException | IllegalArgumentException | InvocationTargetException ex) {
+                            } catch (NullPointerException ex) {
+                                Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
+                                        "Collection {0} in {1} not found in "
+                                        + "previously loaded entities.",
+                                        new Object[]{tmpParameterClass, currField});
+                            } catch (InstantiationException | IllegalAccessException |
+                                    NoSuchMethodException | SecurityException |
+                                    IllegalArgumentException | InvocationTargetException ex) {
                                 Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
                                         "Error updating collection. Is the owned class "
                                         + "declared before the owning class?", ex);
@@ -424,15 +441,24 @@ public class JpaLoader {
     }
 
     public void delete() {
+        //check if the error handler is regisered. If so remove it
+        //as we will end up in a loop as the default error handler
+        //
+        boolean startingWithOpenTransaction = true;
+        //make sure we are safe from any bulk updates.
+        em.clear();
         try {
-            boolean active = true;
-
             if (!em.getTransaction().isActive()) {
-                active = false;
+                startingWithOpenTransaction = false;
             }
+
+            if (startingWithOpenTransaction && em.getTransaction().getRollbackOnly()) {
+                em.getTransaction().rollback();
+                startingWithOpenTransaction = false;
+            }
+
             try {
-                em.clear();
-                if (!active) {
+                if (!startingWithOpenTransaction) {
                     em.getTransaction().begin();
                 }
                 Set<Class> set = dataSetClasses.keySet();
@@ -442,7 +468,7 @@ public class JpaLoader {
                 }
                 dataSetClasses.clear();
             } finally {
-                if (!active) {
+                if (!startingWithOpenTransaction) {
                     if (em.getTransaction().getRollbackOnly()) {
                         em.getTransaction().rollback();
                     } else {
@@ -451,7 +477,7 @@ public class JpaLoader {
                     }
                 }
             }
-        } catch (PersistenceException ex) {
+        } catch (PersistenceException | JpaLoaderException ex) {
             Logger.getLogger(JpaLoader.class
                     .getName()).log(Level.SEVERE,
                             "Cleaning database of inserted dataset records failed. "
@@ -462,47 +488,51 @@ public class JpaLoader {
     }
 
     private void delete(Class clazz, Iterator<Class> itr) {
-        Map<Integer, Object> map = dataSetClasses.get(clazz);
+        Map<Integer, Integer> map = dataSetClasses.get(clazz);
         if (itr.hasNext()) {
             delete(itr.next(), itr);
         }
         map.entrySet().forEach(c -> {
             try {
-                Integer id = (Integer) c.getValue().getClass().getMethod("getId").invoke(c.getValue());
+                Integer id = c.getValue();
+                //determine if entity stille exists & delete if so.
                 if (em.find(clazz, id) != null) {
                     Object obj2 = em.find(clazz, id);
                     em.remove(obj2);
-
                 }
-            } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            } catch (PersistenceException ex) {
                 Logger.getLogger(JpaLoader.class
-                        .getName()).log(Level.WARNING, "Error deleting object from dataset", ex);
+                        .getName()).log(Level.WARNING, MessageFormat.format(
+                                        "Persistence exception deleting {0} object from dataset.",
+                                        c), ex);
+                throw new JpaLoaderException("Persistence error during delete", ex);
+            } catch (Exception ex) {
+                Logger.getLogger(JpaLoader.class
+                        .getName()).log(Level.WARNING, MessageFormat.format(
+                                        "Unexpected error deleting {0} object from dataset.",
+                                        c), ex);
+                throw new JpaLoaderException("Unexpected error during delete", ex);
             }
         });
     }
 
-    public <E> E lookupEntity(E reference) throws LookupException {
+    public <E> E lookupEntity(E reference) {
         try {
             Class c = reference.getClass();
             Integer id = (Integer) c.getMethod("getId").invoke(reference);
-            //merge and refresh the object
-            E obj = em.merge((E) dataSetClasses.get(c).get(id));
-            //em.refresh(obj);
-            return obj;
-
-        } catch (NoSuchMethodException ex) {
+            if (dataSetClasses.get(c).get(id) != null) {
+                return (E) em.find(c, dataSetClasses.get(c).get(id));
+            } else {
+                return null;
+            }
+        } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException |
+                InvocationTargetException | SecurityException |NullPointerException ex) {
             Logger.getLogger(JpaLoader.class
-                    .getName()).log(Level.SEVERE, MessageFormat.format("No method "
-                                    + "getId for class {0}", reference.getClass()), ex);
-            return reference;
-        } catch (IllegalAccessException | IllegalArgumentException |
-                InvocationTargetException | SecurityException ex) {
-            Logger.getLogger(JpaLoader.class
-                    .getName()).log(Level.SEVERE, "Error looking up "
-                            + "reference object in dataset", ex);
-            throw new LookupException(
-                    "Error looking up reference entity in dataset", ex);
+                    .getName()).log(Level.WARNING, MessageFormat.format("Look up "
+                                    + "for class {0} failed. Entity may not "
+                            + "yet be loaded in look up table", 
+                            reference.getClass()), ex);
+            return null;
         }
     }
-
 }

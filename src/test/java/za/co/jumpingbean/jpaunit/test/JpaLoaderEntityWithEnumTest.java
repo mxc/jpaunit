@@ -49,7 +49,7 @@ public class JpaLoaderEntityWithEnumTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/entitywithenum.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery("Select c from EntityWithEnum c where c.enumValue=?");
@@ -67,7 +67,7 @@ public class JpaLoaderEntityWithEnumTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/entitywithenum.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery("Select c from EntityWithOrdinalEnum c where c.enumValue=?");

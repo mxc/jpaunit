@@ -38,7 +38,7 @@ public class JpaLoaderMissingPropertiesTest {
         loader.init("META-INF/entitywithmissingproperty.xml", modelPackageName,
                 new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             BigDecimal result = new BigDecimal("1000.24");

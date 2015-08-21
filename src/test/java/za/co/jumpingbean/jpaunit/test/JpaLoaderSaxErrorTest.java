@@ -46,6 +46,6 @@ public class JpaLoaderSaxErrorTest {
         loader.init("META-INF/simplesaxerrorxml.xml", modelPackageName,
                 new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
     }
 }

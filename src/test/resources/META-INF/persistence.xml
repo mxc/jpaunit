@@ -22,6 +22,6 @@
             <property name="javax.persistence.jdbc.password" value="pass"/>
             <property name="javax.persistence.schema-generation.database.action" value="drop-and-create"/>
             <property name="javax.persistence.schema-generation.create-source" value="metadata" />          
-        </properties>
-    </persistence-unit>-->
+        </properties> 
+    </persistence-unit> -->
 </persistence>

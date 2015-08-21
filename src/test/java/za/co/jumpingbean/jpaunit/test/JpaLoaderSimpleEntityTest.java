@@ -66,7 +66,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplestringentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
 
@@ -85,7 +85,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simpledateentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Calendar cal = Calendar.getInstance();
@@ -114,7 +114,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplelocaldateentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             LocalDate lDate = LocalDate.parse("2018-07-06", DateTimeFormatter.ISO_DATE);
@@ -136,7 +136,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simpleintegerentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery(
@@ -163,7 +163,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplebooleanentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery(
@@ -187,7 +187,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplebigdecimalentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery("Select c from SimpleBigDecimalEntity c where c.bigDecimalValue=?");
@@ -242,7 +242,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplelongentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery(
@@ -267,7 +267,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simpledoubleentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery(
@@ -293,7 +293,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplefloatentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery(
@@ -318,7 +318,7 @@ public class JpaLoaderSimpleEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simplebyteentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery(

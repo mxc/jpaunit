@@ -49,7 +49,7 @@ public class JpaLoaderEmbeddedEntityTest {
         loader.init("META-INF/entitywithembeddedvalueentity.xml", modelPackageName,
                 new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query tmpq = em.createQuery("Select s from EntityWithEmbeddedValue s");

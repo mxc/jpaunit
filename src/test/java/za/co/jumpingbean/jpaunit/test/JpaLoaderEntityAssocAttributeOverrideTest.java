@@ -50,7 +50,7 @@ public class JpaLoaderEntityAssocAttributeOverrideTest {
         loader.init("META-INF/entitywithoverrides.xml", modelPackageName,
                 new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query tmpq = em.createQuery("Select s from EntityAssocAttribOverride s");

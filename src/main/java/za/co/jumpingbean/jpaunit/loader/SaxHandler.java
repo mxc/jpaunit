@@ -42,9 +42,10 @@ import za.co.jumpingbean.jpaunit.DataSetEntry;
  */
 public class SaxHandler extends DefaultHandler implements JPAParser {
 
-    private final List<DataSetEntry> dataSetEnties = new ArrayList<>();
+    private final List<DataSetEntry> dataSetEntries = new ArrayList<>();
     private String modelPackageName;
-    private final int count = 0;
+    private int count = 0;
+    private int attrCounter = 0;
     private String fileName;
 
     public SaxHandler() {
@@ -52,8 +53,10 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
 
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
-        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "set {0} attribute values on {1}", new Object[]{count, qName});
+        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "set {0} "
+                + "attribute values on {1}", new Object[]{attrCounter, qName});
         Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "processed {0}", qName);
+        attrCounter = 0;
     }
 
     @Override
@@ -63,18 +66,21 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
         if (qName.equalsIgnoreCase("dataset")) {
             return;
         }
+        Logger.getLogger(SaxHandler.class.getName()).log(Level.INFO, "processing {0}", qName);
         //Construct package name
         StringBuilder strBuf = new StringBuilder(modelPackageName);
         strBuf.append(".").append(qName);
         String className = strBuf.toString();
         try {
+            count++;
             DataSetEntry entry = new DataSetEntry(count, className);
-            this.dataSetEnties.add(entry);
+            this.dataSetEntries.add(entry);
             //Set up lists to keep xml attributes and values
 
             //Iterate over attribues  and populate columns and values list
             IntStream.range(0, attributes.getLength()).forEach((int i) -> {
                 entry.addProperty(attributes.getLocalName(i), attributes.getValue(i));
+                attrCounter++;
             });
         } catch (ClassNotFoundException ex) {
             if (attributes.getLength() != 2) {
@@ -89,7 +95,7 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
                     String attr1 = attributes.getLocalName(0);
                     String attr2 = attributes.getLocalName(1);
                     if (attr1.endsWith("_id") && attr2.endsWith("_id")) {
-                      //since the xml file has no idea who the owner is 
+                        //since the xml file has no idea who the owner is 
                         //we add the bidrectional relationship to both sides
                         //of the @ManyToMany relationship and let JPA figure it 
                         //out.
@@ -130,8 +136,17 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
         owned = owned.substring(0, 1).toUpperCase() + owned.substring((1));
         String ownerClassName = modelPackageName + "." + owner.substring(0, owner.indexOf("_id"));
         String ownedClassName = modelPackageName + "." + owned.substring(0, owned.indexOf("_id"));
-
-        return this.dataSetEnties.stream().anyMatch(de -> {
+        try {
+            Class owenedClazz = Class.forName(ownedClassName);
+            Class owenerClazz = Class.forName(ownerClassName);
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(SaxHandler.class.getName()).log(Level.WARNING,
+                    "At least one class for @ManyToMany not found: {0} | {1}",new Object[]{
+                    ownerClassName,ownedClassName});
+            return false;
+        }
+        //if (dataSetEnties.contains(ownerClassName) && dataSetEnties.contains(ownedClassName)) {
+        return this.dataSetEntries.stream().anyMatch(de -> {
             if (de.getClazz().getName().equals(ownerClassName)
                     && Integer.parseInt(de.getValue("id")) == ownerId
                     && de.getManyToManyRelationships().get(ownedClassName) != null) {
@@ -142,6 +157,9 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
                 return false;
             }
         });
+        //} else {
+        //    return false;
+        //}
     }
 
     @Override
@@ -161,14 +179,14 @@ public class SaxHandler extends DefaultHandler implements JPAParser {
 
     @Override
     public List<DataSetEntry> getDataEnties() {
-        return this.dataSetEnties;
+        return this.dataSetEntries;
     }
 
     @Override
     public void process(String fileName, String modelPackageName) throws ParserException {
         this.fileName = fileName;
         this.modelPackageName = modelPackageName;
-        this.dataSetEnties.clear();
+        this.dataSetEntries.clear();
         try {
             SAXParser parser;
             SAXParserFactory parserFactory = SAXParserFactory.newInstance();

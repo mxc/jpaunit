@@ -52,7 +52,6 @@ public class JpaLoaderEntityDeletedDuringTest {
         loader.init("META-INF/foreignentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         Integer id;
-        em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery("Select c from za.co.jumpingbean.jpaunit.test.model.ForeignEntity c");
@@ -86,7 +85,6 @@ public class JpaLoaderEntityDeletedDuringTest {
         loader.init("META-INF/foreignentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         Integer id;
-        em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery("Select c from ForeignEntity c");
@@ -97,6 +95,7 @@ public class JpaLoaderEntityDeletedDuringTest {
             Query qry1 = em.createQuery("Delete from ForeignEntity c where c.id=?");
             qry1.setParameter(1,id);
             qry1.executeUpdate();
+           
         }catch(Throwable ex){
             Logger.getLogger(JpaLoaderEntityDeletedDuringTest.class.getName()).
                     log(Level.SEVERE,"Error testing delete of dataset entity during execution",ex);
@@ -107,7 +106,7 @@ public class JpaLoaderEntityDeletedDuringTest {
         }
         em.getTransaction().begin();
         ForeignEntity ent = em.find(ForeignEntity.class,id);
-        //Object is still in persistence context - seems delte via JQL does not
+        //Object is still in persistence context - delete via JQL does not
         //update the persistence context. Need to call em.clear() to clear
         //the cache. This is done in the delete method of JpaLoader.
         //This test is designs to test that it works.

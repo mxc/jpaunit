@@ -51,7 +51,6 @@ public class JpaLoaderDatasetCleanUpTest {
         loader.init("META-INF/foreignentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         Integer id;
-        em.clear();
         em.getTransaction().begin();
         Query qry = em.createQuery("Select c from ForeignEntity c");
         qry.setMaxResults(1);
@@ -72,7 +71,6 @@ public class JpaLoaderDatasetCleanUpTest {
         loader.init("META-INF/simplestringentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
         Integer id;
-        em.clear();
         em.getTransaction().begin();
         Query qry = em.createQuery("Select c from SimpleStringEntity c");
         qry.setMaxResults(1);

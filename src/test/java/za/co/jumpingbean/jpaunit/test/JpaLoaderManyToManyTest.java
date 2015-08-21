@@ -53,10 +53,9 @@ public class JpaLoaderManyToManyTest {
         if (em.getTransaction().isActive()) {
             em.getTransaction().commit();
         }
-        em.clear();
 
         em.getTransaction().begin();
-            OwnerEntity o1 = new OwnerEntity();
+        OwnerEntity o1 = new OwnerEntity();
             o1.setId(1);
             o1 = loader.lookupEntity(o1);
 
@@ -78,6 +77,7 @@ public class JpaLoaderManyToManyTest {
             OwnedEntity od = new OwnedEntity();
             od.setId(2);
             od = loader.lookupEntity(od);
+            em.refresh(od);
             TypedQuery<OwnedEntity> odq = em.createQuery(
                     "Select o from OwnedEntity o where o.id = ?", OwnedEntity.class);
             odq.setParameter(1, od.getId());

@@ -49,7 +49,7 @@ public class JpaLoaderForeignEntityTest {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/foreignentity.xml", modelPackageName, new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             Query qry = em.createQuery("Select c from ForeignEntity c where c.stringValue=?");

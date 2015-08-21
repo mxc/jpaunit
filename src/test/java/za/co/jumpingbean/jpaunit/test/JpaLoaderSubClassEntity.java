@@ -39,7 +39,7 @@ public class JpaLoaderSubClassEntity {
         loader.init("META-INF/subclassentity.xml", modelPackageName,
                 new SaxHandler(), em);
         loader.load();
-        em.clear();
+        //em.clear();
         em.getTransaction().begin();
         try {
             String result = "test1";

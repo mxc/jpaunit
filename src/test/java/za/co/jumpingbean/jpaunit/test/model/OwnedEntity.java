@@ -21,10 +21,10 @@ package za.co.jumpingbean.jpaunit.test.model;
 import java.util.Set;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 
 /**
@@ -40,7 +40,7 @@ public class OwnedEntity {
     private Integer id;
 
     private String name;
-    @ManyToMany(mappedBy="owned")
+    @ManyToMany(mappedBy="owned",fetch = FetchType.EAGER)
     private Set<OwnerEntity> ownerEntitites;
 
     public Integer getId() {
