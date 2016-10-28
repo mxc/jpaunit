@@ -81,6 +81,25 @@ public class JpaLoaderSimpleEntityTest {
     }
 
     @Test
+    public void jpaSimpleStringEntityIdTest() throws ParserException {
+        JpaLoader loader = new JpaLoader();
+        loader.init("META-INF/simplestringidentity.xml", modelPackageName, new SaxHandler(), em);
+        loader.load();
+        //em.clear();
+        em.getTransaction().begin();
+        try {
+
+            Query qry = em.createQuery(
+                    "Select s from SimpleStringIdEntity s");
+            List<SimpleStringEntity> list = qry.getResultList();
+            Assert.assertEquals("Should have loaded 3 SimpleStringIdEntity objects", 3, list.size());
+        } finally {
+            em.getTransaction().commit();
+            loader.delete();
+        }
+    }
+
+    @Test
     public void jpaSimpleDateEntityTest() throws ParserException {
         JpaLoader loader = new JpaLoader();
         loader.init("META-INF/simpledateentity.xml", modelPackageName, new SaxHandler(), em);
@@ -247,7 +266,7 @@ public class JpaLoaderSimpleEntityTest {
         try {
             Query qry = em.createQuery(
                     "Select s from SimpleLongEntity s");
-            List<SimpleStringEntity> list = qry.getResultList();
+            List<SimpleLongEntity> list = qry.getResultList();
             Assert.assertEquals("Failed to retrieve correct longValue", 3, list.size());
             qry = em.createQuery("Select s from SimpleLongEntity s where s.id =?");
             //Check null insert on long number range exceeded

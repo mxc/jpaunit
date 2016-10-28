@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <MethodIntegerEntity id="1" integerValue="1" />
+    <MethodIntegerEntity id="2" integerValue="-200" />
+    <MethodIntegerEntity id="3" integerValue="-2147483649" />
+</dataset>

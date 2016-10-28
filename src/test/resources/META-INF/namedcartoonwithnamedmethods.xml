@@ -1,0 +1,5 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <CARTOON cartoon="Loony Toons" lead_character="Bugs Bunny" />
+    <CARTOON cartoon="Duck Tales" lead_character="Duck Triplets" />
+</dataset>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <MethodStringIdEntity name="one" stringValue="test1" />
+    <MethodStringIdEntity name="two" stringValue="test2" />
+    <MethodStringIdEntity name="three" stringValue="test3" />
+</dataset>
