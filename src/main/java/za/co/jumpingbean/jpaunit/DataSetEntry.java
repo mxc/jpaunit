@@ -18,27 +18,13 @@
  */
 package za.co.jumpingbean.jpaunit;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.persistence.AssociationOverride;
-import javax.persistence.AssociationOverrides;
-import javax.persistence.AttributeOverride;
-import javax.persistence.AttributeOverrides;
-import javax.persistence.Column;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
+import javax.persistence.*;
 
 /**
  *
@@ -54,8 +40,47 @@ public class DataSetEntry {
     private final Map<String, String> overrides = new HashMap<>();
     private final Map<String, List<Integer>> manyToManyRelationships = new HashMap<>();
 
+    enum TableAnnotatedClasses {
+        CLASSES;
+
+        private ConcurrentMap<String, String> tableNameClassMapping = new ConcurrentSkipListMap<>();
+
+        TableAnnotatedClasses() {
+            //load all classes once instead of having to do it for each test in constructor
+            try {
+                Field f = ClassLoader.class.getDeclaredField("classes");
+                f.setAccessible(true);
+                ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+                //using Concurrent Collections to avoid ConcurrentModificaitonException
+                CopyOnWriteArrayList<Class> loadedClasses = new CopyOnWriteArrayList<>((Vector<Class>) f.get(classLoader));
+                f.setAccessible(false);
+
+                for (Class<?> aClass : loadedClasses) {
+                    String clazzPackageName = aClass.getName().substring(0, aClass.getName().lastIndexOf("."));
+                    Table table = aClass.getDeclaredAnnotation(Table.class);
+                    if (null != aClass.getPackage()
+                            && aClass.getPackage().getName().equals(clazzPackageName)
+                            && null != table) {
+                        tableNameClassMapping.put(table.name(), aClass.getName());
+                    }
+                }
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public DataSetEntry(Integer index, String clazz) throws ClassNotFoundException {
-        this.clazz = Class.forName(clazz);
+        //check for classes with @Table annotations and match the class and table
+        String clazzPackageName = clazz.substring(0, clazz.lastIndexOf("."));
+        String classOrTableName = clazz.replace(clazzPackageName + ".", "");
+        if(TableAnnotatedClasses.CLASSES.tableNameClassMapping.containsKey(classOrTableName)){
+            String classWithTableAnnotation = TableAnnotatedClasses.CLASSES.tableNameClassMapping.get(classOrTableName);
+            this.clazz = Class.forName(classWithTableAnnotation); //make sure we have a new instance
+        } else {
+            this.clazz = Class.forName(clazz);
+        }
+
         this.entryIndex = index;
         this.updateOverrides();
     }
@@ -75,23 +100,27 @@ public class DataSetEntry {
             AssociationOverride[] associationOverride = (AssociationOverride[]) currentClass.getAnnotationsByType(AssociationOverride.class);
             processAssociationOverrideArray(associationOverride);
         }
-        //Process field Overrides
-        List<Field> fields = Utility.getAllFields(clazz);
-        for (Field field : fields) {
-            AttributeOverrides attributeOverridesArray[] = field.getAnnotationsByType(AttributeOverrides.class);
+        //Process field and method Overrides
+        processAnnotatedElements(Utility.getAllFields(clazz));
+        processAnnotatedElements(Utility.getAllMethods(clazz));
+    }
+
+    private <T extends AnnotatedElement & Member> void processAnnotatedElements(List<T> annotatedElements) {
+        for (T member : annotatedElements) {
+            AttributeOverrides attributeOverridesArray[] = member.getAnnotationsByType(AttributeOverrides.class);
             processOverridesArray(attributeOverridesArray);
-            AttributeOverride[] attributeOverrideArray = field.getAnnotationsByType(AttributeOverride.class);
+            AttributeOverride[] attributeOverrideArray = member.getAnnotationsByType(AttributeOverride.class);
             processOverrideArray(attributeOverrideArray);
-            AssociationOverrides[] associationOverrides = (AssociationOverrides[]) field.getAnnotationsByType(AssociationOverrides.class);
+            AssociationOverrides[] associationOverrides = (AssociationOverrides[]) member.getAnnotationsByType(AssociationOverrides.class);
             processAssociationOverridesArray(associationOverrides);
-            AssociationOverride[] associationOverride = (AssociationOverride[]) field.getAnnotationsByType(AssociationOverride.class);
+            AssociationOverride[] associationOverride = (AssociationOverride[]) member.getAnnotationsByType(AssociationOverride.class);
             processAssociationOverrideArray(associationOverride);
-            JoinColumn[] joinColumns = field.getAnnotationsByType(JoinColumn.class);
-            processJoinColumns(joinColumns, field.getName());
-            Column[] columnsArray = field.getAnnotationsByType(Column.class);
-            processColumns(columnsArray, field.getName());
-            ManyToMany[] manyToManyAnnotations = field.getAnnotationsByType(ManyToMany.class);
-            processManyToMany(manyToManyAnnotations, field);
+            JoinColumn[] joinColumns = member.getAnnotationsByType(JoinColumn.class);
+            processJoinColumns(joinColumns, member.getName());
+            Column[] columnsArray = member.getAnnotationsByType(Column.class);
+            processColumns(columnsArray, member.getName());
+            ManyToMany[] manyToManyAnnotations = member.getAnnotationsByType(ManyToMany.class);
+            processManyToMany(manyToManyAnnotations, member);
         }
     }
 
@@ -251,12 +280,18 @@ public class DataSetEntry {
     }
 
     //Create an entry for ManyToMany collections in owning class
-    private void processManyToMany(ManyToMany[] manyToManyAnnotations, Field field) {
+    private void processManyToMany(ManyToMany[] manyToManyAnnotations, Member member) {
         Arrays.stream(manyToManyAnnotations).forEach(mtm -> {
             //only add the owning side of the manytomany relationship
-            Type[] types = ((ParameterizedType) field.getGenericType())
-                    .getActualTypeArguments();
-            manyToManyRelationships.put(((Class)(types[0])).getName(),new LinkedList());
+            Type[] types = new Type[0];
+            if (member instanceof Field) {
+                types = ((ParameterizedType) ((Field) member).getGenericType())
+                        .getActualTypeArguments();
+            } else if (member instanceof Method) {
+                types = ((ParameterizedType) ((Method)member).getGenericReturnType())
+                        .getActualTypeArguments();
+            }
+            manyToManyRelationships.put(((Class) (types[0])).getName(), new LinkedList());
         });
     }
 

@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>za.co.jumpingbean.jpaunit</groupId>
     <artifactId>JpaUnit</artifactId>
-    <version>0.1</version>
+    <version>0.2</version>
     <packaging>jar</packaging>
     <name>JPAUnit</name>
     <description>A library to assist with unit testing of JPA code by preloading 

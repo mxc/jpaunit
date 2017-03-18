@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <SimpleStringIdEntity id="one" stringValue="test1" />
+    <SimpleStringIdEntity id="two" stringValue="test2" />
+    <SimpleStringIdEntity id="three" stringValue="test3" />
+</dataset>

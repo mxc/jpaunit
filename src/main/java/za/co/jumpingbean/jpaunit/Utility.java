@@ -19,6 +19,7 @@
 package za.co.jumpingbean.jpaunit;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -33,6 +34,16 @@ public interface Utility {
         Class currentClass = clazz;
         while (currentClass != Object.class) {
             fields.addAll(Arrays.asList(currentClass.getDeclaredFields()));
+            currentClass = currentClass.getSuperclass();
+        }
+        return fields;
+    }
+
+    static List<Method> getAllMethods(Class clazz) {
+        List<Method> fields = new LinkedList<>();
+        Class currentClass = clazz;
+        while (currentClass != Object.class) {
+            fields.addAll(Arrays.asList(currentClass.getDeclaredMethods()));
             currentClass = currentClass.getSuperclass();
         }
         return fields;

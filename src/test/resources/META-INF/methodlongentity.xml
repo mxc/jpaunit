@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <MethodLongEntity id="1" longValue="1" />
+    <MethodLongEntity id="2" longValue="-20000000000000" />
+    <MethodLongEntity id="3" longValue="9223372036854775808" />
+</dataset>

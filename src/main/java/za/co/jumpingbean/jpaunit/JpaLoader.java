@@ -19,30 +19,19 @@
 package za.co.jumpingbean.jpaunit;
 
 import za.co.jumpingbean.jpaunit.fieldconverter.FieldConverter;
+
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.persistence.Embeddable;
-import javax.persistence.EntityManager;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.PersistenceException;
+import javax.persistence.*;
+
 import za.co.jumpingbean.jpaunit.exception.CannotConvertException;
 import za.co.jumpingbean.jpaunit.exception.ConnectionException;
 import za.co.jumpingbean.jpaunit.exception.JpaLoaderException;
@@ -64,7 +53,7 @@ public class JpaLoader {
     //The data to be provided by a JPAParser
     List<DataSetEntry> dataset = new ArrayList<>();
     //Keep list of classes added during load for foreign key lookup
-    final Map<Class, Map<Integer, Integer>> dataSetClasses = new LinkedHashMap<>();
+    final Map<Class, Map<Object, Object>> dataSetClasses = new LinkedHashMap<>();
     //Counter to log how many enitites where loaded
     private final AtomicInteger count = new AtomicInteger(0);
     EntityManager em;
@@ -176,10 +165,42 @@ public class JpaLoader {
         this.dataset = parser.getDataEnties();
     }
 
+    public Optional<Field> getIdAnnotatedField(Class<?> clazz) {
+        Collection<Field> fields = new ArrayList<>();
+        Class<?> currentClazz = clazz;
+        while(currentClazz != Object.class) {
+            fields.addAll(Arrays.asList(currentClazz.getDeclaredFields()));
+            currentClazz = currentClazz.getSuperclass();
+        }
+
+        for (Field field : fields) {
+            for (Annotation annotation : field.getAnnotations()) {
+                if(annotation.annotationType().equals(Id.class)) {
+                    System.out.println("Field return type: " + field.getType());
+                    return Optional.of(field);
+                }
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    public Optional<Method> getIdAnnotatedMethod(Class<?> clazz) {
+        for (Method method : clazz.getDeclaredMethods()) {
+            for (Annotation annotation : method.getAnnotations()) {
+                if(annotation.annotationType().equals(Id.class)) {
+                    return Optional.of(method);
+                }
+            }
+        }
+
+        return Optional.empty();
+    }
+
     private void process() {
         count.set(0);
         dataset.stream().forEach(entry -> {
-            Class clazz = entry.getClazz();
+            Class<?> clazz = entry.getClazz();
 
             Logger.getLogger(JpaLoader.class
                     .getName()).log(Level.INFO, MessageFormat
@@ -187,10 +208,10 @@ public class JpaLoader {
                                     clazz, entry.getValue("id")));
 
             try {
-                List<Field> fields = Utility.getAllFields(clazz);
                 Object obj = clazz.newInstance();
                 //Set object properties
-                updateObject(obj, fields, entry);
+                updateObjectFields(obj, Utility.getAllFields(clazz), entry);
+                updateObjectMethods(obj, Utility.getAllMethods(clazz), entry);
                 try {
                     //Create linked list in dataSetClasses table to
                     //prevent null pointer checks
@@ -198,23 +219,56 @@ public class JpaLoader {
                         dataSetClasses.put(clazz, new HashMap<>());
                     }
                     //try and merge the object. If data exists or someother
-                    //error catch exception. 
-                    Integer id = (Integer) obj.getClass().getMethod("getId").invoke(obj);
-                    //Set id to invalid number to avoid merging with auto-assigned number
-                    Method m;
-                    try {
-                        m = obj.getClass().getMethod("setId", Integer.class);
-                    } catch (NoSuchMethodException ex) {
-                        m = obj.getClass().getMethod("setId", Integer.TYPE);
+                    //error catch exception.
+                    Object id = null;
+
+                    Optional<Field> idAnnotatedFieldOptional = getIdAnnotatedField(clazz);
+                    Optional<Method> idAnnotatedMethodOptional = getIdAnnotatedMethod(clazz);
+                    if(idAnnotatedFieldOptional.isPresent()) {
+                        Field idAnnotatedField = idAnnotatedFieldOptional.get();
+                        idAnnotatedField.setAccessible(true);
+                        Class<?> idType = idAnnotatedField.getType();
+                        id = idAnnotatedField.get(obj);
+
+                        if (idType.equals(Long.class) || idType.equals(long.class)) {
+                            idAnnotatedField.set(obj, -1L);
+                        } else if (idType.equals(Double.class) || idType.equals(double.class)
+                                || idType.equals(Float.class) || idType.equals(float.class)) {
+                            idAnnotatedField.set(obj, -1.0);
+                        } else if (idType.equals(int.class)
+                                || idType.equals(short.class) || idType.equals(byte.class)
+                            || null != idType.getSuperclass() && idType.getSuperclass().equals(Number.class)) {
+                            idAnnotatedField.set(obj, -1);
+                        }
+                    } else if (idAnnotatedMethodOptional.isPresent()) {
+                        Method idAnnotatedMethod = idAnnotatedMethodOptional.get();
+                        idAnnotatedMethod.setAccessible(true);
+                        id = idAnnotatedMethod.invoke(obj);
+
+                        String methodName = idAnnotatedMethod.getName();
+                        if(methodName.startsWith("get")) {
+                            String setterMethod = methodName.replaceFirst("get", "set");
+
+                            Method method = obj.getClass().getMethod(setterMethod, idAnnotatedMethod.getReturnType());
+
+                            if (id instanceof Long || id.getClass().equals(long.class)) {
+                                method.invoke(obj, -1L);
+                            } else if (id instanceof Double || id.getClass().equals(double.class)
+                                    || id instanceof Float || id.getClass().equals(float.class)) {
+                                method.invoke(obj, -1.0);
+                            } else if (id.getClass().equals(int.class)
+                                    || id.getClass().equals(short.class) || id.getClass().equals(byte.class)
+                                    || null != id.getClass().getSuperclass() && id.getClass().getSuperclass().equals(Number.class)) {
+                                method.invoke(obj, -1);
+                            }
+                        }
                     }
-                    m.invoke(obj, -1);
                     obj = this.em.merge(obj);
                     em.flush();
                     //Add dataset object to cache of dataset objects as it
                     //may be used in a foregin key relationship later. Need
                     //original id to look up real entity id.
-                    dataSetClasses.get(clazz).put(id, (Integer) obj.getClass().
-                            getMethod("getId").invoke(obj));
+                    dataSetClasses.get(clazz).put(id, id);
                     Logger.getLogger(JpaLoader.class.getName()).log(Level.INFO,
                             MessageFormat.format("Loaded {0} entity -- {1} ", clazz,
                                     obj.toString()));
@@ -257,10 +311,115 @@ public class JpaLoader {
         );
     }
 
-    private void updateObject(final Object obj, List<Field> fields, DataSetEntry entry)
+    private void updateObjectMethods(final Object obj, List<Method> methods, DataSetEntry entry)
             throws IllegalAccessException, InstantiationException {
 
-        //Iterate over set methods on Entity and populate entity with 
+        //Iterate over set methods on Entity and populate entity with
+        //element attribute values if they are defined
+        methods.forEach((Method currMethod) -> {
+
+            String methodName = currMethod.getName();
+            if (methodName.startsWith("get")) {
+                String setterMethodName = methodName.replaceFirst("get", "set");
+
+                Method setterMethod = null;
+                try {
+                    setterMethod = obj.getClass().getMethod(setterMethodName, currMethod.getReturnType());
+
+                    if (null != setterMethod) {
+                        Class parameterClass = currMethod.getReturnType();
+                        if (parameterClass.isPrimitive()) {
+                            //Determine if this is a primitiive type
+                            parameterClass = getPrimitiveType(parameterClass);
+                        }
+                        //If it is a  simple data type set the properties
+                        //remove set from function name to obtain property name
+                        //String name = currMethod.getName();
+                        if (converters.containsParser(parameterClass)
+                                && (entry.getProperties().contains(currMethod.getName()))) {
+                            try {
+                                Object result = converters.getParser(parameterClass)
+                                        .parse(entry.getValue(currMethod.getName()));
+
+                                this.setMethod(setterMethod, obj, result);
+
+                            } catch (CannotConvertException ex) {
+                                Logger.getLogger(JpaLoader.class
+                                        .getName()).log(Level.SEVERE,
+                                        MessageFormat.format("Error converting {0} with value {1}",
+                                                currMethod.getName(), entry.getValue(currMethod.getName())), ex);
+                            }
+                            //Removed used properties from list.
+                            //Any remaining properties after load will
+                            //be properties that were not matched.
+                            entry.removeProperty(currMethod.getName());
+                        }
+                    }
+                } catch (NoSuchMethodException e) {
+                    Logger.getLogger(JpaLoader.class
+                            .getName()).log(Level.INFO, "{0} has "
+                            + "no setter method named {1}",
+                            new Object[] {currMethod.getDeclaringClass(), currMethod.getName().replaceFirst("get", "set")});
+                }
+            }
+        });
+    }
+
+    private Class getPrimitiveType(Class parameterClass) {
+        String primitiveType = parameterClass.getTypeName();
+
+        switch (primitiveType) {
+            case "int":
+                parameterClass = Integer.class;
+                break;
+            case "char":
+                parameterClass = Character.class;
+                break;
+            case "long":
+                parameterClass = Long.class;
+                break;
+            case "float":
+                parameterClass = Float.class;
+                break;
+            case "double":
+                parameterClass = Double.class;
+                break;
+            case "boolean":
+                parameterClass = Boolean.class;
+
+                break;
+        }
+        return parameterClass;
+    }
+
+    private void setMethod(Method method, Object object, Object value) {
+        try {
+            boolean wasPrivate = false;
+            if(!method.isAccessible()) {
+                wasPrivate = true;
+                method.setAccessible(true);
+            }
+
+            method.invoke(object, value);
+
+            if(wasPrivate) {
+                method.setAccessible(false);
+            }
+        } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(JpaLoader.class
+                    .getName()).log(Level.SEVERE, MessageFormat.format("Reflection error "
+                    + "while calling set method {0} to value {1}", method, value), ex);
+            throw new ParserStreamException(ex,
+                    "Reflection error while processing xml data file");
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateObjectFields(final Object obj, List<Field> fields, DataSetEntry entry)
+            throws IllegalAccessException, InstantiationException {
+
+        //Iterate over set methods on Entity and populate entity with
         //element attribute values if they are defined
         fields.stream().forEach((Field currField) -> {
             Class parameterClass = currField.getType();
@@ -275,7 +434,7 @@ public class JpaLoader {
                 if (entry.getProperties().contains(propertyName.toString())) {
                     Integer foreignId = Integer.parseInt(entry.getValue(propertyName.toString()));
                     //Find previously created dataset object and set it on current object
-                    Integer candidateObjectId = dataSetClasses.get(parameterClass).get(foreignId);
+                    Object candidateObjectId = dataSetClasses.get(parameterClass).get(foreignId);
                     Object candidateObject = em.find(parameterClass, candidateObjectId);
                     this.setField(currField, obj, candidateObject);
                     entry.removeProperty(propertyName.toString());
@@ -291,7 +450,7 @@ public class JpaLoader {
 
                 try {
                     embeddedObj = parameterClass.newInstance();
-                    updateObject(embeddedObj, Utility.getAllFields(parameterClass), entry);
+                    updateObjectFields(embeddedObj, Utility.getAllFields(parameterClass), entry);
                     this.setField(currField, obj, embeddedObj);
                 } catch (InstantiationException | IllegalAccessException ex) {
                     Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
@@ -325,8 +484,8 @@ public class JpaLoader {
                 } catch (NoSuchFieldException | SecurityException ex) {
                     Logger.getLogger(JpaLoader.class
                             .getName()).log(Level.SEVERE,
-                                    MessageFormat.format("Error converting enum type {0}",
-                                            parameterClass), ex);
+                            MessageFormat.format("Error converting enum type {0}",
+                                    parameterClass), ex);
                 }
             } else if (Collection.class.isAssignableFrom(parameterClass)) {
                 //check if this is a many-to-many collection
@@ -356,14 +515,14 @@ public class JpaLoader {
                             } catch (NullPointerException ex) {
                                 Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
                                         "Collection {0} in {1} not found in "
-                                        + "previously loaded entities.",
+                                                + "previously loaded entities.",
                                         new Object[]{tmpParameterClass, currField});
                             } catch (InstantiationException | IllegalAccessException |
                                     NoSuchMethodException | SecurityException |
                                     IllegalArgumentException | InvocationTargetException ex) {
                                 Logger.getLogger(JpaLoader.class.getName()).log(Level.SEVERE,
                                         "Error updating collection. Is the owned class "
-                                        + "declared before the owning class?", ex);
+                                                + "declared before the owning class?", ex);
                             }
                         });
                         this.setField(currField, obj, coll);
@@ -371,35 +530,13 @@ public class JpaLoader {
                 } catch (ClassCastException ex) {
                     Logger.getLogger(JpaLoader.class
                             .getName()).log(Level.SEVERE,
-                                    MessageFormat.format("Error converting collection type {0}",
-                                            parameterClass), ex);
+                            MessageFormat.format("Error converting collection type {0}",
+                                    parameterClass), ex);
                 }
             } else {
                 if (parameterClass.isPrimitive()) {
                     //Determine if this is a primitiive type
-                    String primitiveType = parameterClass.getTypeName();
-
-                    switch (primitiveType) {
-                        case "int":
-                            parameterClass = Integer.class;
-                            break;
-                        case "char":
-                            parameterClass = Character.class;
-                            break;
-                        case "long":
-                            parameterClass = Long.class;
-                            break;
-                        case "float":
-                            parameterClass = Float.class;
-                            break;
-                        case "double":
-                            parameterClass = Double.class;
-                            break;
-                        case "boolean":
-                            parameterClass = Boolean.class;
-
-                            break;
-                    }
+                    parameterClass = getPrimitiveType(parameterClass);
                 }
                 //If it is a  simple data type set the properties
                 //remove set from function name to obtain property name
@@ -488,13 +625,13 @@ public class JpaLoader {
     }
 
     private void delete(Class clazz, Iterator<Class> itr) {
-        Map<Integer, Integer> map = dataSetClasses.get(clazz);
+        Map<Object, Object> map = dataSetClasses.get(clazz);
         if (itr.hasNext()) {
             delete(itr.next(), itr);
         }
         map.entrySet().forEach(c -> {
             try {
-                Integer id = c.getValue();
+                Object id = c.getValue();
                 //determine if entity stille exists & delete if so.
                 if (em.find(clazz, id) != null) {
                     Object obj2 = em.find(clazz, id);
@@ -519,7 +656,7 @@ public class JpaLoader {
     public <E> E lookupEntity(E reference) {
         try {
             Class c = reference.getClass();
-            Integer id = (Integer) c.getMethod("getId").invoke(reference);
+            Object id = c.getMethod("getId").invoke(reference);
             if (dataSetClasses.get(c).get(id) != null) {
                 return (E) em.find(c, dataSetClasses.get(c).get(id));
             } else {
